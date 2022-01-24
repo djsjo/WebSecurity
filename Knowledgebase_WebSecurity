@@ -9,7 +9,7 @@ response.writeHead(200, { 'Content-Type': 'text/plain',
 
 
 Aufgabe 1:
--Exercise 1: Hello World  DONE
+-Exercise 1: Hello World  DONE	
 -Serving content fast DONE
 -Exercise 2: a static web server	
 
@@ -18,3 +18,10 @@ todo:
 -parsen und gemäß type den mimetype machen
 -nochmal genau gucken warum css nicht mitgeladen wird
 
+
+
+known problems:
+-bei /Public wird nicht angzeigt
+
+links:
+-https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?

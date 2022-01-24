@@ -3,7 +3,11 @@ var fs = require('fs');
 const {url} = require('inspector');
 
 var server = http.createServer((req, res) => {
-    console.log(req.method + "___" + req.url + "___" + req.httpVersion + '___'+__dirname);
+    console.log("method: " + req.method + "" +
+        "url:" + req.url + " " +
+        "content-type: "+req.headers["content-type"]+" "+
+        "httpVersion: " + req.httpVersion + " " +
+        "dirName: " + __dirname);
     //res.writeHead(200, { 'Content-Type': 'text/html' });
     //res.send('<b>Hello World</b>');
     //res.write("<b>Hello World</b>");
@@ -30,13 +34,13 @@ var server = http.createServer((req, res) => {
         //check if it is a directory and has an
         if (fs.statSync(__dirname + reqUrl.pathname).isDirectory()) {
             //check if index.html exists
-            if(reqUrl.pathname.slice(-1)!='/');
+            if (reqUrl.pathname.slice(-1) != '/') ;
             {
                 console.log("has not /");
-                reqUrl.pathname+='/';
+                reqUrl.pathname += '/';
             }
             if (fs.existsSync(__dirname + reqUrl.pathname + '/index.html')) {
-                reqUrl.pathname+='/index.html';
+                reqUrl.pathname += '/index.html';
                 fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
                     console.log("calling readfile with index.html path");
                     if (err) {
@@ -72,8 +76,7 @@ var server = http.createServer((req, res) => {
 
                 });
             }
-        }
-        else {
+        } else {
             //is not a directory it has to be a file or something similar
             fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
                 if (err) {
@@ -81,7 +84,8 @@ var server = http.createServer((req, res) => {
                     res.end(JSON.stringify(err));
                     return;
                 }
-                res.writeHead(200);
+                //      res.writeHead(200);
+                res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end(data);
             });
         }
