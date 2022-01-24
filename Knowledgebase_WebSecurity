@@ -1,0 +1,20 @@
+response.write(fileData); to write a file (maybe html)?
+
+response.writeHead(200, { 'Content-Type': 'text/plain',
+                          'Trailer': 'Content-MD5' });
+                          
+          serve static content                https://nodejs.org/en/knowledge/HTTP/servers/how-to-serve-static-files/ 
+          
+          
+
+
+Aufgabe 1:
+-Exercise 1: Hello World  DONE
+-Serving content fast DONE
+-Exercise 2: a static web server	
+
+
+todo:
+-parsen und gemäß type den mimetype machen
+-nochmal genau gucken warum css nicht mitgeladen wird
+
