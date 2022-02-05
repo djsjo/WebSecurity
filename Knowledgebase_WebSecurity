@@ -9,12 +9,27 @@ response.writeHead(200, { 'Content-Type': 'text/plain',
 
 
 Aufgabe 1:
--Exercise 1: Hello World  DONE
+-Exercise 1: Hello World  DONE	
 -Serving content fast DONE
--Exercise 2: a static web server	
+-Exercise 2: a static web server	soweit done
+-Exercise 3: experimenting with request methods DONE 
 
 
 todo:
 -parsen und gemäß type den mimetype machen
 -nochmal genau gucken warum css nicht mitgeladen wird
+-path handling interpretieren
 
+
+
+
+known problems:
+-bei /Public wird nicht angzeigt
+-css files werden nicht nachgeladen
+
+links:
+-https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
+-https://nodejs.dev/learn/nodejs-file-paths could be nice for checking out the file endings
+-https://stackoverflow.com/questions/52908212/how-to-serve-static-files-in-vanilla-nodejs/52913289
+-https://www.w3schools.com/js/js_string_methods.asp
+-https://www.w3schools.com/html/html_tables.asp
