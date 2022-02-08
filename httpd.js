@@ -1,59 +1,103 @@
 var http = require('http');
 var fs = require('fs');
 var qs = require('querystring');
-const {url} = require('inspector');
+//const {url} = require('inspector');
 const path = require('path');
+const url = require('url');
 
-var server = http.createServer(async (req, res) => {
-    console.log("method: " + req.method + "" +
-        "url:" + req.url + " " +
-        "content-type: " + req.headers["content-type"] + " " +
-        "httpVersion: " + req.httpVersion + " " +
-        "dirName: " + __dirname + ' ');
-    //res.writeHead(200, { 'Content-Type': 'text/html' });
-    //res.send('<b>Hello World</b>');
-    //res.write("<b>Hello World</b>");
-    //res.write("./Public/index.html")
-    const buffers = [];
+//idea
+/*
 
-    // let data = '';
-    let dataAsJson;
-    // req.on('data', chunk => {
-    //     console.log(`Data chunk available: ${chunk}`)
-    //     data += chunk;
-    // })
-    // req.on('end', () => {
-    //     if (data != '') {
-    //         dataAsJson = qs.parse(data);
-    //         console.log("Bodydata: ");
-    //         for (dates in dataAsJson) {
-    //             console.log(dates+":"+dataAsJson[dates]);
-    //         }
-    //     }
-    // })
-    for await (const chunk of req) {
-        buffers.push(chunk);
-    }
+todo function route(req, res) übernimmt routing arbeit
 
-    if (buffers.length !== 0) {
-        const data = Buffer.concat(buffers).toString();
 
-        //console.log(JSON.parse(data).todo); // 'Buy the milk'
-        dataAsJson = qs.parse(data);
-        console.log("Bodydata: ");
-        for (dates in dataAsJson) {
-            console.log(dates + ":" + dataAsJson[dates]);
+
+ */
+function route(req, res) {
+    var url_parts = url.parse(req.url, true);
+    path1 = decodeURIComponent(url_parts.pathname);
+    pathSplit = path1.split('/');
+    if (pathSplit.includes("")) {
+        const index = pathSplit.indexOf("");
+        if (index > -1) {
+            pathSplit.splice(index, 1); // 2nd parameter means remove one item only
         }
     }
+    if (pathSplit[0] == 'information') {
+        information(req, res);
+    } else {
+        staticServerHandler(req, res);
+    }
+}
+
+//returns type of
+function typehandling(req, res) {
+    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    // console.log(reqUrl.pathname);
+    // console.log(reqUrl.searchParams);
+    // console.log(path.extname(reqUrl.pathname));
+    //change file endeing when path doesnt end with a file
+    if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
+        console.log("is one of the allowed files")
+
+        // switch (tmp) {
+        //     case ".js":
+        //
+        //     //case ".html":
+        //     case ".css":
+        //         if (!reqUrl.pathname.includes("/Public")) {
+        //             reqUrl.pathname = '/Public' + reqUrl.pathname;
+        //         }
+        //         break;
+        //
+        // }
+        let tmp = path.extname(reqUrl.pathname);
+        switch (tmp) {
+            case ".js":
+                // Anweisungen werden ausgeführt,
+                res.writeHead(200, {'Content-Type': 'text/javascript'});
+                return "js";
+                break;
+            case ".html":
+                // Anweisungen werden ausgeführt,
+                res.writeHead(200, {'Content-Type': 'text/html'});
+                return "html";
+                break;
+            case ".css":
+                // Anweisungen werden ausgeführt,
+                res.writeHead(200, {'Content-Type': 'text/css'});
+                return "css";
+                break;
+            default:
+                // Anweisungen werden ausgeführt,
+                // falls keine der case-Klauseln mit expression übereinstimmt
+                return "";
+                break;
+        }
+    }
+}
+
+function staticServerHandler(req, res) {
     //res.end();
     reqUrl = new URL(req.url, 'http://' + req.headers.host);
-    console.log(reqUrl.pathname);
-    console.log(reqUrl.searchParams);
-    console.log(path.extname(reqUrl.pathname));
+    // console.log(reqUrl.pathname);
+    // console.log(reqUrl.searchParams);
+    // console.log(path.extname(reqUrl.pathname));
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
         let tmp = path.extname(reqUrl.pathname);
+        switch (tmp) {
+            //css and js need Public in the path
+            case ".js":
+            //case ".html":
+            case ".css":
+                if (!reqUrl.pathname.includes("/Public")) {
+                    reqUrl.pathname = '/Public' + reqUrl.pathname;
+                }
+                break;
+
+        }
 
         switch (tmp) {
             case ".js":
@@ -157,7 +201,145 @@ var server = http.createServer(async (req, res) => {
             });
         }
 
+    } else {
+        console.log("path doesnt exist");
+        res.end();
     }
+}
+
+function logStuff(req, res) {
+    console.log("method: " + req.method + "" +
+        "url:" + req.url + " " +
+        "content-type: " + req.headers["content-type"] + " " +
+        "httpVersion: " + req.httpVersion + " " +
+        "dirName: " + __dirname + ' ');
+
+    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    console.log(reqUrl.pathname);
+    console.log(reqUrl.searchParams);
+    console.log(path.extname(reqUrl.pathname));
+}
+
+function information(req, res) {
+
+    /* replace {{method}} with the request method
+     replace {{path}} with the request path
+     replace {{query}} with the query string
+     replace {{queries}} with a sequence of two column table rows, one for each query parameter.
+
+     */
+    //the case if the css etc is asked for
+    if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
+        //reqNew={};
+        //console.log(typeof(req));
+        //resNew={};
+        // Object.assign(reqNew,req);
+        // Object.assign(resNew,res);
+        req.url = req.url.replace("/information", "/Public");
+        //reqNew.url="/Public"+reqNew.url;
+        staticServerHandler(req, res);
+        return;
+    }
+    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    // console.log(reqUrl.pathname);
+    // console.log(reqUrl.searchParams);
+    // console.log(path.extname(reqUrl.pathname));
+    var url_parts = url.parse(req.url, true);
+
+    method = req.method;
+    path1 = decodeURIComponent(url_parts.pathname);
+    query = url_parts.search;
+    // "url:" + req.url + " " +
+    // "content-type: " + req.headers["content-type"] + " " +
+    // "httpVersion: " + req.httpVersion + " " +
+    // "dirName: " + __dirname + ' ');
+    allKeys = Object.keys(url_parts.query);
+    allValues = Object.values(url_parts.query);
+
+    let desiredPath = __dirname + "/templates" + "/information.template";
+    if (fs.existsSync(desiredPath)) {
+        console.log("before readfile in information");
+
+        //is not a directory it has to be a file or something similar
+        fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+            console.log("im doing something");
+            if (err) {
+                res.writeHead(404);
+                res.end(JSON.stringify(err));
+                return;
+            }
+            data = data.replace("{{method}}", method.toString());
+            data = data.replace("{{path}}", path1.toString());
+            data = data.replace("{{query}}", query.toString());
+            queryTable = "";
+            queryTable += "<table>" +
+                "<tr>" +
+                "<th>Variable</th>" +
+                "<th>Value</th>" +
+                "</tr>";
+            for (i = 0; i < allKeys.length; i++) {
+                queryTable += '<tr><td>' + allKeys[i]
+                    + '</td>' +
+                    `<td>${allValues[i]}</td>` + '</tr>'
+                //res.write(data[i]+"<br>");
+            }
+            queryTable += "</table>";
+
+            data = data.replace("{{queries}}", queryTable.toString())
+            res.writeHead(200, {'Content-Type': 'text/html'});
+            res.end(data);
+        });
+
+        console.log("after readfile in information")
+    }
+
+    // read as string
+
+    //
+
+}
+
+var server = http.createServer(async (req, res) => {
+    logStuff(req, res);
+    // information(req,res);
+    //res.writeHead(200, { 'Content-Type': 'text/html' });
+    //res.send('<b>Hello World</b>');
+    //res.write("<b>Hello World</b>");
+    //res.write("./Public/index.html")
+    const buffers = [];
+
+    // let data = '';
+    let dataAsJson;
+    // req.on('data', chunk => {
+    //     console.log(`Data chunk available: ${chunk}`)
+    //     data += chunk;
+    // })
+    // req.on('end', () => {
+    //     if (data != '') {
+    //         dataAsJson = qs.parse(data);
+    //         console.log("Bodydata: ");
+    //         for (dates in dataAsJson) {
+    //             console.log(dates+":"+dataAsJson[dates]);
+    //         }
+    //     }
+    // })
+    for await (const chunk of req) {
+        buffers.push(chunk);
+    }
+
+    if (buffers.length !== 0) {
+        const data = Buffer.concat(buffers).toString();
+
+        //console.log(JSON.parse(data).todo); // 'Buy the milk'
+        dataAsJson = qs.parse(data);
+        console.log("Bodydata: ");
+        for (dates in dataAsJson) {
+            console.log(dates + ":" + dataAsJson[dates]);
+        }
+    }
+    //staticServerHandler(req, res);
+    //information(req, res);
+    route(req, res);
     //here code to handle if path doesnt exist
 
 

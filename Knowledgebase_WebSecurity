@@ -13,12 +13,14 @@ Aufgabe 1:
 -Serving content fast DONE
 -Exercise 2: a static web server	soweit done
 -Exercise 3: experimenting with request methods DONE 
+-Exercise 4: content generation
 
 
 todo:
--parsen und gemäß type den mimetype machen
 -nochmal genau gucken warum css nicht mitgeladen wird
 -path handling interpretieren
+
+-mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
 
 
 
@@ -27,9 +29,25 @@ known problems:
 -bei /Public wird nicht angzeigt
 -css files werden nicht nachgeladen
 
+mögliche problems:
+-url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
+
 links:
 -https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
 -https://nodejs.dev/learn/nodejs-file-paths could be nice for checking out the file endings
 -https://stackoverflow.com/questions/52908212/how-to-serve-static-files-in-vanilla-nodejs/52913289
 -https://www.w3schools.com/js/js_string_methods.asp
 -https://www.w3schools.com/html/html_tables.asp
+-replace string https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
+-string in list? https://stackoverflow.com/questions/2430000/determine-if-string-is-in-list-in-javascript
+
+
+morgen:
+-gucken warum debug nicht läuft
+-weiter an function handler und route arbeiten
+-gucken warum read file nicht funktioniert
+
+-morgen routing machen
+
+nur noch information mit / funktioniert nicht mehr
+
