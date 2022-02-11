@@ -13,12 +13,12 @@ Aufgabe 1:
 -Serving content fast DONE
 -Exercise 2: a static web server	soweit done
 -Exercise 3: experimenting with request methods DONE 
--Exercise 4: content generation
+-Exercise 4: content generation DONE
+-DOS
 
 
 todo:
--nochmal genau gucken warum css nicht mitgeladen wird
--path handling interpretieren
+
 
 -mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
 
@@ -26,8 +26,7 @@ todo:
 
 
 known problems:
--bei /Public wird nicht angzeigt
--css files werden nicht nachgeladen
+
 
 mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
@@ -40,14 +39,47 @@ links:
 -https://www.w3schools.com/html/html_tables.asp
 -replace string https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
 -string in list? https://stackoverflow.com/questions/2430000/determine-if-string-is-in-list-in-javascript
+-file extension https://attacomsian.com/blog/nodejs-get-file-extension
 
 
 morgen:
--gucken warum debug nicht läuft
--weiter an function handler und route arbeiten
--gucken warum read file nicht funktioniert
+-auf /information ohne query zugreifen
+-at first i tried randomized a lot of long password or parameters
 
--morgen routing machen
 
-nur noch information mit / funktioniert nicht mehr
+
+DOS attack
+i read about dos attacks and thought of the different possiblities my code could be attackable.
+-i might not thougt of every case to check for file existence or allowed filetypes. especially with the newly added routing function
+-if i take a very long pahtname or send a lot of parameters i could mayber also slow down the server if long enough
+-test if i specify more than just /information as path if it is possible to make weird behaviour
+-route function splits the path. maybe if the path is long enough it can slow down the server
+-i make an array for all query parameter which could be too big
+- i show all query parameter in the website which could be problemation if too big
+-the website waites for body data. what happens if the body data is to big
+-import problem fix
+
+
+first attacks:
+-i found out through my locks that i didnt thought of the ending .ico and its not loaded because of that
+-i generated random pairs of parameters and send them to localhost:8000/information?ab=ac etc. Started with 10 pairs and multiplied everytime times 10. Til about 10000. There i found out that the browser seems to cut the parameters at some point. I managed to send about 567 parameter pairs. but it doesnt crash the server.
+-next i tried to pass very long paths.this also results in no crash because for example in the /information path i dont care for the other paths. the only thing what happened was, that css etc. were not loaded because the path doesnt exist. the path was also cutted by the browser at some point
+-the next i tried is to send very long passwords via the post exercise 3. I saw, that that if i put in the path "Public" it seeks for the index.html it works but after sending it to the server it is send to "/index.html" which doesnt exist without the "/Public" before. I fixed it by checking if the file is a css,js or html and add an "/Public" in the path if there is none.i tried passwords up to 6000000 lengt and the server worked. only copy pasting was very slow at longer passwords.
+
+next:
+querry test
+
+
+
+
+
+
+
+
+
+
+
+other stuff:
+-acces other stuff über path
+
 
