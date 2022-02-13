@@ -56,7 +56,13 @@ function typehandling(req, res) {
 
 function staticServerHandler(req, res) {
     //res.end();
-    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    try {
+        reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    } catch (e) {
+        res.writeHead(404);
+        res.end("404 Eror");
+        return;
+    }
     // console.log(reqUrl.pathname);
     // console.log(reqUrl.searchParams);
     // console.log(path.extname(reqUrl.pathname));
@@ -178,10 +184,20 @@ function logStuff(req, res) {
         "httpVersion: " + req.httpVersion + " " +
         "dirName: " + __dirname + ' ');
 
-    reqUrl = new URL(req.url, 'http://' + req.headers.host);
-    console.log("pathname: " + reqUrl.pathname);
-    console.log("param: " + reqUrl.searchParams);
-    console.log("fileending: " + path.extname(reqUrl.pathname));
+    try {
+        reqUrl = new URL(req.url, 'http://' + req.headers.host);
+        console.log("pathname: " + reqUrl.pathname);
+        console.log("param: " + reqUrl.searchParams);
+        console.log("fileending: " + path.extname(reqUrl.pathname));
+    } catch (e) {
+        console.log("Problem: "+e);
+        console.log("not a valid url");
+        console.log("pathname: " + "unvalid");
+        console.log("param: " + "unvalid");
+        console.log("fileending: " + "unvalid");
+        res.writeHead(404);
+        res.end("404 Eror");
+    }
 }
 
 function information(req, res) {
@@ -234,22 +250,25 @@ function information(req, res) {
             }
             data = data.replace("{{method}}", method.toString());
             data = data.replace("{{path}}", path1.toString());
-            data = data.replace("{{query}}", query.toString());
-            queryTable = "";
-            queryTable += "<table>" +
-                "<tr>" +
-                "<th>Variable</th>" +
-                "<th>Value</th>" +
-                "</tr>";
-            for (i = 0; i < allKeys.length; i++) {
-                queryTable += '<tr><td>' + allKeys[i]
-                    + '</td>' +
-                    `<td>${allValues[i]}</td>` + '</tr>'
-                //res.write(data[i]+"<br>");
-            }
-            queryTable += "</table>";
 
-            data = data.replace("{{queries}}", queryTable.toString())
+            if (query!==null) {
+                data = data.replace("{{query}}", query.toString());
+                queryTable = "";
+                queryTable += "<table>" +
+                    "<tr>" +
+                    "<th>Variable</th>" +
+                    "<th>Value</th>" +
+                    "</tr>";
+                for (i = 0; i < allKeys.length; i++) {
+                    queryTable += '<tr><td>' + allKeys[i]
+                        + '</td>' +
+                        `<td>${allValues[i]}</td>` + '</tr>'
+                    //res.write(data[i]+"<br>");
+                }
+                queryTable += "</table>";
+
+                data = data.replace("{{queries}}", queryTable.toString())
+            }
             res.writeHead(200, {'Content-Type': 'text/html'});
             res.end(data);
         });
