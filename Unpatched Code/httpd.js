@@ -5,14 +5,7 @@ var qs = require('querystring');
 const path = require('path');
 const url = require('url');
 
-//idea
-/*
 
-todo function route(req, res) übernimmt routing arbeit
-
-
-
- */
 function route(req, res) {
     var url_parts = url.parse(req.url, true);
     path1 = decodeURIComponent(url_parts.pathname);
@@ -39,40 +32,24 @@ function typehandling(req, res) {
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
-
-        // switch (tmp) {
-        //     case ".js":
-        //
-        //     //case ".html":
-        //     case ".css":
-        //         if (!reqUrl.pathname.includes("/Public")) {
-        //             reqUrl.pathname = '/Public' + reqUrl.pathname;
-        //         }
-        //         break;
-        //
-        // }
         let tmp = path.extname(reqUrl.pathname);
         switch (tmp) {
             case ".js":
                 // Anweisungen werden ausgeführt,
                 res.writeHead(200, {'Content-Type': 'text/javascript'});
                 return "js";
-                break;
             case ".html":
                 // Anweisungen werden ausgeführt,
                 res.writeHead(200, {'Content-Type': 'text/html'});
                 return "html";
-                break;
             case ".css":
                 // Anweisungen werden ausgeführt,
                 res.writeHead(200, {'Content-Type': 'text/css'});
                 return "css";
-                break;
             default:
                 // Anweisungen werden ausgeführt,
                 // falls keine der case-Klauseln mit expression übereinstimmt
                 return "";
-                break;
         }
     }
 }
@@ -90,7 +67,7 @@ function staticServerHandler(req, res) {
         switch (tmp) {
             //css and js need Public in the path
             case ".js":
-            //case ".html":
+            case ".html":
             case ".css":
                 if (!reqUrl.pathname.includes("/Public")) {
                     reqUrl.pathname = '/Public' + reqUrl.pathname;
@@ -127,25 +104,11 @@ function staticServerHandler(req, res) {
     }
 
 
-//+ '/Public/index.html'
-
-    // fs.readdir(__dirname + reqUrl.pathname, function (err, data) {
-    //     if (err) {
-    //         res.writeHead(404);
-    //         res.end(JSON.stringify(err));
-    //         return;
-    //     }
-    //     console.log(data.toString());
-    //
-    // });
-
-
     //check if if path exists
     if (fs.existsSync(__dirname + reqUrl.pathname)) {
         //check if it is a directory and has an
         if (fs.statSync(__dirname + reqUrl.pathname).isDirectory()) {
             //check if index.html exists
-            test = reqUrl.pathname.slice(-1);
             if (reqUrl.pathname.slice(-1) !== '/') {
                 console.log("has not /");
                 reqUrl.pathname += '/';
@@ -203,7 +166,8 @@ function staticServerHandler(req, res) {
 
     } else {
         console.log("path doesnt exist");
-        res.end();
+        res.writeHead(404);
+        res.end("404 Eror");
     }
 }
 
@@ -215,9 +179,9 @@ function logStuff(req, res) {
         "dirName: " + __dirname + ' ');
 
     reqUrl = new URL(req.url, 'http://' + req.headers.host);
-    console.log(reqUrl.pathname);
-    console.log(reqUrl.searchParams);
-    console.log(path.extname(reqUrl.pathname));
+    console.log("pathname: " + reqUrl.pathname);
+    console.log("param: " + reqUrl.searchParams);
+    console.log("fileending: " + path.extname(reqUrl.pathname));
 }
 
 function information(req, res) {
@@ -301,11 +265,7 @@ function information(req, res) {
 
 var server = http.createServer(async (req, res) => {
     logStuff(req, res);
-    // information(req,res);
-    //res.writeHead(200, { 'Content-Type': 'text/html' });
-    //res.send('<b>Hello World</b>');
-    //res.write("<b>Hello World</b>");
-    //res.write("./Public/index.html")
+
     const buffers = [];
 
     // let data = '';
@@ -330,17 +290,20 @@ var server = http.createServer(async (req, res) => {
     if (buffers.length !== 0) {
         const data = Buffer.concat(buffers).toString();
 
-        //console.log(JSON.parse(data).todo); // 'Buy the milk'
+
         dataAsJson = qs.parse(data);
         console.log("Bodydata: ");
         for (dates in dataAsJson) {
-            console.log(dates + ":" + dataAsJson[dates]);
+
+            if(dates=="password"){
+                console.log("lenght:"+dataAsJson[dates].length);
+            }else{
+                console.log(dates + ":" + dataAsJson[dates]);
+            }
         }
     }
-    //staticServerHandler(req, res);
-    //information(req, res);
+
     route(req, res);
-    //here code to handle if path doesnt exist
 
 
 });
