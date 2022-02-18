@@ -1,0 +1,5 @@
+XSS Attack
+-I inserted the script "<script>alert('Owned');</script>" as a get parameter in "localhost:8000/inormation?search=nothing <script>alert('Owned');</script>" and the alert appeared.
+- i checked rule 0 and the only place im inserting the "untrusted" data is inside <td> elements. For rule 1 and 2 i made an specific function to encode data for the possiblity to do my own modifications in the future if neccessary. I encode explicitly all keys and values of the get parameter.
+
+

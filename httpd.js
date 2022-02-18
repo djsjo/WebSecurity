@@ -5,6 +5,10 @@ var qs = require('querystring');
 const path = require('path');
 const url = require('url');
 
+function encodeData(origData) {
+    return encodeURIComponent(origData);
+
+}
 
 function route(req, res) {
     var url_parts = url.parse(req.url, true);
@@ -190,7 +194,7 @@ function logStuff(req, res) {
         console.log("param: " + reqUrl.searchParams);
         console.log("fileending: " + path.extname(reqUrl.pathname));
     } catch (e) {
-        console.log("Problem: "+e);
+        console.log("Problem: " + e);
         console.log("not a valid url");
         console.log("pathname: " + "unvalid");
         console.log("param: " + "unvalid");
@@ -200,6 +204,7 @@ function logStuff(req, res) {
     }
 }
 
+//information handler
 function information(req, res) {
 
     /* replace {{method}} with the request method
@@ -233,8 +238,18 @@ function information(req, res) {
     // "content-type: " + req.headers["content-type"] + " " +
     // "httpVersion: " + req.httpVersion + " " +
     // "dirName: " + __dirname + ' ');
-    allKeys = Object.keys(url_parts.query);
-    allValues = Object.values(url_parts.query);
+    allKeysUnencoded = Object.keys(url_parts.query);
+    allValuesUnencoded = Object.values(url_parts.query);
+    // allKeys=allKeysUnencoded;
+    // allValues=allValuesUnencoded;
+    allKeys = [];
+    allValues = [];
+    for (i = 0; i < allKeysUnencoded.length; i++) {
+        allKeys[i] = encodeData(allKeysUnencoded[i]);
+        allValues[i] = encodeData(allValuesUnencoded[i]);
+
+        //res.write(data[i]+"<br>");
+    }
 
     let desiredPath = __dirname + "/templates" + "/information.template";
     if (fs.existsSync(desiredPath)) {
@@ -251,7 +266,7 @@ function information(req, res) {
             data = data.replace("{{method}}", method.toString());
             data = data.replace("{{path}}", path1.toString());
 
-            if (query!==null) {
+            if (query !== null) {
                 data = data.replace("{{query}}", query.toString());
                 queryTable = "";
                 queryTable += "<table>" +
@@ -314,9 +329,9 @@ var server = http.createServer(async (req, res) => {
         console.log("Bodydata: ");
         for (dates in dataAsJson) {
 
-            if(dates=="password"){
-                console.log("lenght:"+dataAsJson[dates].length);
-            }else{
+            if (dates == "password") {
+                console.log("lenght:" + dataAsJson[dates].length);
+            } else {
                 console.log(dates + ":" + dataAsJson[dates]);
             }
         }
