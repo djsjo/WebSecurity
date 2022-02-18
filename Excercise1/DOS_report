@@ -1,0 +1,22 @@
+DOS attack
+i read about dos attacks and thought of the different possiblities my code could be attackable:
+-i might not thought of every case to check for file existence or allowed filetypes. Especially with the newly added routing function
+-if i take a very long pathname or send a lot of parameters i could maybe also slow down the server if long enough
+-test if i specify more than just /information as path if it is possible to generate weird behaviour
+-my route function splits the path. maybe if the path is long enough it can slow down the server
+-i make an array for all query parameter which could be too big
+- i show all query parameter in the website which could be problematic if too big
+-the website waites for body data. what happens if the body data is to big
+
+
+
+first attacks:
+-i found out through my locks that i didnt thought of the ending .ico and its not loaded because of that
+-i generated random pairs of parameters and send them to localhost:8000/information?ab=ac etc. Started with 10 pairs and multiplied everytime times 10. Til about 10.000. There i found out that the browser seems to cut the parameters at some point. I managed to send about 567 parameter pairs. but it doesnt crash the server.
+-next i tried to pass very long paths.this also results in no crash because for example in the /information path i dont care for the other paths. the only thing what happened was, that css etc. were not loaded because the path doesnt exist. the path was also cutted by the browser at some point
+-the next i tried is to send very long passwords via the post exercise 3. I saw, that that if i put in the path "Public" it seeks for the index.html it works but after sending it to the server it is send to "/index.html" which doesnt exist without the "/Public" before. I fixed it by checking if the file is a css,js or html and add an "/Public" in the path if there is none.i tried passwords up to 6000000 length and the server worked. only copy pasting was very slow at longer passwords.
+-through luck i found out that if i search for "localhost:8000/information" without the parameter the server crashes, becauce the the query object is null and i try to run a function on it. i fixed it by running a null check before.
+-i could also crash the server with "localhost:8000//" because that is an invalid url. I fixed it by catching the errors and return 404 answers.
+
+
+
