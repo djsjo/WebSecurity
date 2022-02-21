@@ -16,6 +16,22 @@ Aufgabe 1:
 -Exercise 4: content generation DONE
 -DOS
 
+Aufgabe 2:
+-single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
+-load information from server about lights etc. regularly
+-copy html and js from example
+-mockup data model? javascript für devices und temperatur
+-routing and applicationpaths
+	-wie mache ich routingtabellen
+	-main page wird aus template generiert und nimmt die aktuellen werte. path /
+	- AJAX GET requests to /:room/lights/:light oder /:room/temperature
+		-response json encoded sensor state
+	-for switch client sends AJAX POST requests to /:room/lights/:light e.g.
+	-wie mache ich ne routing table?
+	-alle routen eintragen
+	
+	morgen richtig zu json lesen
+
 
 todo:
 
@@ -48,6 +64,14 @@ links:
 -types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
 -cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
 -testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
+-dom based xss prevention sheet https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html
+-denial of service https://owasp.org/www-community/attacks/Denial_of_Service
+-query string nodejs https://stackoverflow.com/questions/6912584/how-to-get-get-query-string-variables-in-express-js-on-node-js?rq=1
+-Object keys: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+-strings in js https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/Strings
+-bootstrap badges https://getbootstrap.com/docs/4.1/components/badge/
+-ajax beispiel : https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
+-
 
 
 morgen:
