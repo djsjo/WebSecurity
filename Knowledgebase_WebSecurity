@@ -43,6 +43,11 @@ links:
 -null check https://stackoverflow.com/questions/2422946/javascript-check-for-not-null/34817844
 -grep suchen https://praxistipps.chip.de/unter-linux-nach-text-in-dateien-suchen-so-gehts_28711
 -switch case https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Statements/switch
+-xss video https://www.youtube.com/watch?v=dFci82qwXA0
+-xss overview https://owasp.org/www-community/attacks/xss/
+-types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
+-cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
+-testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
 
 
 morgen:
