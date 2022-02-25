@@ -34,9 +34,13 @@ Aufgabe 2:
 	-routing table über switch case weiterhin (evtl. nested)
 	-datamodel als variable oder javascript objekt
 	-route parameters named? params property von request object?, named url segments?
-	
-	morgen the client
+-the client
+	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
+	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückge			sendet
+	-
 
+	morgen css, js übertragen und mit implementierung beginnen
+	
 
 todo:
 
