@@ -19,7 +19,6 @@ Aufgabe 1:
 Aufgabe 2:
 -single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
 -load information from server about lights etc. regularly
--copy html and js from example
 -mockup data model? javascript für devices und temperatur
 -routing and applicationpaths
 	-wie mache ich routingtabellen
@@ -43,10 +42,14 @@ Aufgabe 2:
 	
 
 todo:
+-js object für rooms und jeweiligen devices mit room={livingroom,bedroom,kitchen},gibt lights und temperature, als light{kitchen_lights_stove,kitchen_lights_ceiling,
+livingroom_lights_sofa,
+livingroom_lights_ceiling,
+bedroom_lights_bed,
+bedroom_lights_ceiling,}
 
 
 -mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
-
 
 
 
