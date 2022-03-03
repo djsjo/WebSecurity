@@ -5,6 +5,20 @@ var qs = require('querystring');
 const path = require('path');
 const url = require('url');
 
+let rooms = ["livingroom",
+    "bedroom",
+    "kitchen"];
+
+let roomData = {
+    kitchen: {temperature: 24, lights: {stove: false, seiling: false}},
+    livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
+    bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
+};
+
+function dataController(dataName){
+
+}
+
 function encodeData(origData) {
     return encodeURIComponent(origData);
 
@@ -20,7 +34,11 @@ function route(req, res) {
             pathSplit.splice(index, 1); // 2nd parameter means remove one item only
         }
     }
-    if (pathSplit[0] == 'information') {
+    //show atHome application
+    if (pathSplit[0] == "" && path1 == "/") {
+        atHomeHandler(req, res);
+    }
+    else if (pathSplit[0] == 'information') {
         information(req, res);
     } else {
         staticServerHandler(req, res);
@@ -175,7 +193,7 @@ function staticServerHandler(req, res) {
         }
 
     } else {
-        console.log("path doesnt exist");
+        console.log("path doesnt exist: "+__dirname+reqUrl.pathname);
         res.writeHead(404);
         res.end("404 Eror");
     }
@@ -202,6 +220,101 @@ function logStuff(req, res) {
         res.writeHead(404);
         res.end("404 Eror");
     }
+}
+
+//atHome handler
+function atHomeHandler(req, res) {
+    if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
+        //reqNew={};
+        //console.log(typeof(req));
+        //resNew={};
+        // Object.assign(reqNew,req);
+        // Object.assign(resNew,res);
+        req.url = req.url.replace("/information", "/Public");
+        //reqNew.url="/Public"+reqNew.url;
+        staticServerHandler(req, res);
+        return;
+    }
+    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    // console.log(reqUrl.pathname);
+    // console.log(reqUrl.searchParams);
+    // console.log(path.extname(reqUrl.pathname));
+    var url_parts = url.parse(req.url, true);
+
+    method = req.method;
+    path1 = decodeURIComponent(url_parts.pathname);
+    query = url_parts.search;
+    // "url:" + req.url + " " +
+    // "content-type: " + req.headers["content-type"] + " " +
+    // "httpVersion: " + req.httpVersion + " " +
+    // "dirName: " + __dirname + ' ');
+    allKeysUnencoded = Object.keys(url_parts.query);
+    allValuesUnencoded = Object.values(url_parts.query);
+    // allKeys=allKeysUnencoded;
+    // allValues=allValuesUnencoded;
+    allKeys = [];
+    allValues = [];
+    for (i = 0; i < allKeysUnencoded.length; i++) {
+        allKeys[i] = encodeData(allKeysUnencoded[i]);
+        allValues[i] = encodeData(allValuesUnencoded[i]);
+
+        //res.write(data[i]+"<br>");
+    }
+
+    /* replace {{method}} with the request method
+     replace {{path}} with the request path
+     replace {{query}} with the query string
+     replace {{queries}} with a sequence of two column table rows, one for each query parameter.
+
+     */
+    //the case if the css etc is asked for
+    if (pathSplit[0] == "" && path1 == "/") {
+        let desiredPath = __dirname + "/templates" + "/atHome.template";
+        if (fs.existsSync(desiredPath)) {
+            console.log("before readfile in atHome");
+
+            //is not a directory it has to be a file or something similar
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something");
+                if (err) {
+                    res.writeHead(404);
+                    res.end(JSON.stringify(err));
+                    return;
+                }
+                // data = data.replace("{{method}}", method.toString());
+                // data = data.replace("{{path}}", path1.toString());
+                //
+                // if (query !== null) {
+                //     data = data.replace("{{query}}", query.toString());
+                //     queryTable = "";
+                //     queryTable += "<table>" +
+                //         "<tr>" +
+                //         "<th>Variable</th>" +
+                //         "<th>Value</th>" +
+                //         "</tr>";
+                //     for (i = 0; i < allKeys.length; i++) {
+                //         queryTable += '<tr><td>' + allKeys[i]
+                //             + '</td>' +
+                //             `<td>${allValues[i]}</td>` + '</tr>'
+                //         //res.write(data[i]+"<br>");
+                //     }
+                //     queryTable += "</table>";
+                //
+                //     data = data.replace("{{queries}}", queryTable.toString())
+                // }
+                res.writeHead(200, {'Content-Type': 'text/html'});
+                res.end(data);
+            });
+
+            console.log("after readfile in atHome")
+        }
+    }
+
+
+    // read as string
+
+    //
+
 }
 
 //information handler
