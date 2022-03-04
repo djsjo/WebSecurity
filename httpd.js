@@ -10,12 +10,12 @@ let rooms = ["livingroom",
     "kitchen"];
 
 let roomData = {
-    kitchen: {temperature: 24, lights: {stove: false, seiling: false}},
+    kitchen: {temperature: 24, lights: {stove: false, ceiling: false}},
     livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
 
-function dataController(dataName){
+function dataController(dataName) {
 
 }
 
@@ -38,7 +38,10 @@ function route(req, res) {
     if (pathSplit[0] == "" && path1 == "/") {
         atHomeHandler(req, res);
     }
-    else if (pathSplit[0] == 'information') {
+    //determines if the first parameteter is a known room in our smart home
+    else if (rooms.includes(pathSplit[0])) {
+        atHomeHandler(req, res);
+    } else if (pathSplit[0] == 'information') {
         information(req, res);
     } else {
         staticServerHandler(req, res);
@@ -193,7 +196,7 @@ function staticServerHandler(req, res) {
         }
 
     } else {
-        console.log("path doesnt exist: "+__dirname+reqUrl.pathname);
+        console.log("path doesnt exist: " + __dirname + reqUrl.pathname);
         res.writeHead(404);
         res.end("404 Eror");
     }
@@ -268,6 +271,35 @@ function atHomeHandler(req, res) {
 
      */
     //the case if the css etc is asked for
+    getRoutingTable = {
+        '/livingroom/temperature': function () {
+            return roomData.livingroom.temperature;
+        },
+        '/kitchen/temperature': function () {
+            return roomData.kitchen.temperature;
+        },
+        '/bedroom/temperature': function () {
+            return roomData.bedroom.temperature;
+        },
+        '/kitchen/lights/stove': function () {
+            return roomData.kitchen.lights.stove;
+        },
+        '/kitchen/lights/ceiling': function () {
+            return roomData.kitchen.lights.ceiling;
+        },
+        '/livingroom/lights/sofa': function () {
+            return roomData.livingroom.lights.sofa;
+        },
+        '/livingroom/lights/ceiling': function () {
+            return roomData.livingroom.lights.ceiling;
+        },
+        '/bedroom/lights/bed': function () {
+            return roomData.bedroom.lights.bed;
+        },
+        '/bedroom/lights/ceiling': function () {
+            return roomData.bedroom.lights.ceiling;
+        }
+    };
     if (pathSplit[0] == "" && path1 == "/") {
         let desiredPath = __dirname + "/templates" + "/atHome.template";
         if (fs.existsSync(desiredPath)) {
@@ -307,13 +339,56 @@ function atHomeHandler(req, res) {
             });
 
             console.log("after readfile in atHome")
+
+        }
+    } else if (method == "GET") {
+        try {
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            res.end(stringifiedValue);
+        } catch (e) {
+            res.writeHead(404);
+            res.end(JSON.stringify(e));
+            return;
+        }
+
+    } else if (method == "POST") {
+        postRoutingTable = {
+            '/kitchen/lights/stove': function () {
+                roomData.kitchen.lights.stove = !(roomData.kitchen.lights.stove);
+            },
+            '/kitchen/lights/ceiling': function () {
+                roomData.kitchen.lights.ceiling = !(roomData.kitchen.lights.ceiling);
+            },
+            '/livingroom/lights/sofa': function () {
+                roomData.livingroom.lights.sofa = !(roomData.livingroom.lights.sofa);
+            },
+            '/livingroom/lights/ceiling': function () {
+                roomData.livingroom.lights.ceiling = !(roomData.livingroom.lights.ceiling);
+            },
+            '/bedroom/lights/bed': function () {
+                roomData.bedroom.lights.bed = !(roomData.bedroom.lights.bed);
+            },
+            '/bedroom/lights/ceiling': function () {
+                roomData.bedroom.lights.ceiling = !(roomData.bedroom.lights.ceiling);
+            }
+        };
+        //flip the value
+        try {
+            postRoutingTable[path1]();
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            res.end(stringifiedValue);
+        } catch (e) {
+            res.writeHead(404);
+            res.end(JSON.stringify(e));
+            return;
         }
     }
 
+// read as string
 
-    // read as string
-
-    //
+//
 
 }
 

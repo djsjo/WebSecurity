@@ -15,9 +15,10 @@ let temps = {
 
 
 function refresh() {
+  console.log("refresh");
 
   for (let id in lights) {
-    let path = '/' + lights[id];
+    let path = '' + lights[id];
     $.getJSON(path, data => {
       $('#' + id).attr('class', data ? 'btn btn-warning btn-sm' : 'btn btn-secondary btn-sm');
     })
@@ -25,7 +26,7 @@ function refresh() {
   ;
 
   for (let id in temps) {
-      let path = '/' + temps[id];
+      let path = '' + temps[id];
       $.getJSON(path, data => {
           $('#' + id).text(data + 'C');
       } )
@@ -35,8 +36,7 @@ function refresh() {
 setInterval(refresh, 5000);
 
 function clickLight(id) {
-  console.log("test 1");
-  let path = '/' + lights[id];
+  let path = '' + lights[id];
   $.post(path, res => {
     $('#' + id).attr('class', res ? 'btn btn-warning btn-sm' : 'btn btn-secondary btn-sm');
   });

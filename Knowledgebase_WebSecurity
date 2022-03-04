@@ -35,7 +35,7 @@ Aufgabe 2:
 -the client
 	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
 	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückge			sendet
-	-
+	-todo function in getRoutingtabelle
 
 	
 	
@@ -81,7 +81,7 @@ links:
 -bootstrap badges https://getbootstrap.com/docs/4.1/components/badge/
 -ajax beispiel : https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
 -url parts https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
-
+-javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/																		
 
 morgen:
 -auf /information ohne query zugreifen
