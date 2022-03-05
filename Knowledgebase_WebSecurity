@@ -34,19 +34,23 @@ Aufgabe 2:
 	-route parameters named? params property von request object?, named url segments?
 -the client
 	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
-	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückge			sendet
-	-todo function in getRoutingtabelle
+	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückgesendet
 
 	
 	
 
 todo:
-
--unterscheidung nach Get/Post und dann gucken ob erstes ein room ist
-	-evtl. room handler damit die variablen in einer methode sind
--regelmäßig updaten
-
+-zertifikate anlegentod
+-server auf https umstellen
 -mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
+-js object for valid cookies
+	-evtl. cookie handler
+	
+für angriffe:
+-man kann viel bei cookies ausnutzen
+
+	
+
 
 
 
@@ -81,7 +85,11 @@ links:
 -bootstrap badges https://getbootstrap.com/docs/4.1/components/badge/
 -ajax beispiel : https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
 -url parts https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
--javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/																		
+-javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+
+-set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
+-cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies								
 
 morgen:
 -auf /information ohne query zugreifen

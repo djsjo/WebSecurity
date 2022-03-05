@@ -1,6 +1,7 @@
-var http = require('http');
+var https = require('https');
 var fs = require('fs');
 var qs = require('querystring');
+var cookie = require('cookie');
 //const {url} = require('inspector');
 const path = require('path');
 const url = require('url');
@@ -50,7 +51,7 @@ function route(req, res) {
 
 //returns type of
 function typehandling(req, res) {
-    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
     // console.log(reqUrl.pathname);
     // console.log(reqUrl.searchParams);
     // console.log(path.extname(reqUrl.pathname));
@@ -82,7 +83,7 @@ function typehandling(req, res) {
 function staticServerHandler(req, res) {
     //res.end();
     try {
-        reqUrl = new URL(req.url, 'http://' + req.headers.host);
+        reqUrl = new URL(req.url, 'https://' + req.headers.host);
     } catch (e) {
         res.writeHead(404);
         res.end("404 Eror");
@@ -210,7 +211,7 @@ function logStuff(req, res) {
         "dirName: " + __dirname + ' ');
 
     try {
-        reqUrl = new URL(req.url, 'http://' + req.headers.host);
+        reqUrl = new URL(req.url, 'https://' + req.headers.host);
         console.log("pathname: " + reqUrl.pathname);
         console.log("param: " + reqUrl.searchParams);
         console.log("fileending: " + path.extname(reqUrl.pathname));
@@ -238,7 +239,7 @@ function atHomeHandler(req, res) {
         staticServerHandler(req, res);
         return;
     }
-    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
     // console.log(reqUrl.pathname);
     // console.log(reqUrl.searchParams);
     // console.log(path.extname(reqUrl.pathname));
@@ -413,7 +414,7 @@ function information(req, res) {
         staticServerHandler(req, res);
         return;
     }
-    reqUrl = new URL(req.url, 'http://' + req.headers.host);
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
     // console.log(reqUrl.pathname);
     // console.log(reqUrl.searchParams);
     // console.log(path.extname(reqUrl.pathname));
@@ -485,7 +486,12 @@ function information(req, res) {
 
 }
 
-var server = http.createServer(async (req, res) => {
+const options = {
+    key: fs.readFileSync('cert/server.key'),
+    cert: fs.readFileSync('cert/server.crt')
+};
+
+var server = https.createServer(options, async (req, res) => {
     logStuff(req, res);
 
     const buffers = [];
