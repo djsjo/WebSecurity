@@ -89,7 +89,8 @@ links:
 -storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
 
 -set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
--cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies								
+-cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies	
+-js pass by value https://www.javascripttutorial.net/javascript-pass-by-value/							
 
 morgen:
 -auf /information ohne query zugreifen

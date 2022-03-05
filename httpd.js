@@ -36,7 +36,11 @@ function route(req, res) {
         }
     }
     //show atHome application
-    if (pathSplit[0] == "" && path1 == "/") {
+    if (pathSplit[0] == "login"){
+        login(req, res);
+    }
+    //show atHome application
+    else if (pathSplit[0] == "" && path1 == "/") {
         atHomeHandler(req, res);
     }
     //determines if the first parameteter is a known room in our smart home
@@ -486,6 +490,104 @@ function information(req, res) {
 
 }
 
+//login handler
+function login(req, res) {
+    if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
+        //reqNew={};
+        //console.log(typeof(req));
+        //resNew={};
+        // Object.assign(reqNew,req);
+        // Object.assign(resNew,res);
+        req.url = req.url.replace("/information", "/Public");
+        //reqNew.url="/Public"+reqNew.url;
+        staticServerHandler(req, res);
+        return;
+    }
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
+    // console.log(reqUrl.pathname);
+    // console.log(reqUrl.searchParams);
+    // console.log(path.extname(reqUrl.pathname));
+    var url_parts = url.parse(req.url, true);
+
+    method = req.method;
+    path1 = decodeURIComponent(url_parts.pathname);
+    query = url_parts.search;
+    // "url:" + req.url + " " +
+    // "content-type: " + req.headers["content-type"] + " " +
+    // "httpVersion: " + req.httpVersion + " " +
+    // "dirName: " + __dirname + ' ');
+    allKeysUnencoded = Object.keys(url_parts.query);
+    allValuesUnencoded = Object.values(url_parts.query);
+    // allKeys=allKeysUnencoded;
+    // allValues=allValuesUnencoded;
+    allKeys = [];
+    allValues = [];
+    for (i = 0; i < allKeysUnencoded.length; i++) {
+        allKeys[i] = encodeData(allKeysUnencoded[i]);
+        allValues[i] = encodeData(allValuesUnencoded[i]);
+
+        //res.write(data[i]+"<br>");
+    }
+
+    if (method == "GET") {
+        try {
+            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            let desiredPath = __dirname + "/templates" + "/login.template";
+            if (fs.existsSync(desiredPath)) {
+                console.log("before readfile in login");
+
+                //is not a directory it has to be a file or something similar
+                fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                    console.log("im doing something");
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    res.end(data);
+                });
+
+                console.log("after readfile in login")
+            }
+        } catch (e) {
+            res.writeHead(404);
+            res.end(JSON.stringify(e));
+            return;
+        }
+
+    } else if (method == "POST") {
+        try {
+            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            let desiredPath = __dirname + "/templates" + "/login.template";
+            if (fs.existsSync(desiredPath)) {
+                console.log("before readfile in login Post");
+
+                //is not a directory it has to be a file or something similar
+                fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                    console.log("im doing something");
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    data=data.replace("none","block");
+
+                    res.end(data);
+                });
+
+                console.log("after readfile in login")
+            }
+        } catch (e) {
+            res.writeHead(404);
+            res.end(JSON.stringify(e));
+            return;
+        }
+    }
+}
+
+//options for https
 const options = {
     key: fs.readFileSync('cert/server.key'),
     cert: fs.readFileSync('cert/server.crt')
