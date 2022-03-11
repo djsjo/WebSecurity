@@ -5,15 +5,6 @@ var cookie = require('cookie');
 //const {url} = require('inspector');
 const path = require('path');
 const url = require('url');
-const {
-    getHashes
-} = require('crypto');
-const {
-    pbkdf2Sync
-} = require('crypto');
-const {
-    randomBytes,
-} = require('crypto');
 
 let rooms = ["livingroom",
     "bedroom",
@@ -37,7 +28,7 @@ function cookieHandler(cookieName = "", newCookie = true, destroy = false, verif
         return cookieId;
 
     } else if (destroy && cookieId !== "") {
-        for (let i = 0; i < validcookies[cookieName].length; i++) {
+        for (i = 0; i < validcookies[cookieName].length; i++) {
             if (validcookies[cookieName][i] === cookieId) {
                 validcookies[cookieName].splice(0, 1);
             }
@@ -92,41 +83,14 @@ async function userAuthenticated(username, passwd, req, res) {
     paswdAsJson = JSON.parse(passwdData);
     console.log("test");
     pwFound = false;
-    if(paswdAsJson[username]){
-        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-
-        if (passwdHash === paswdAsJson[username]["password"]) {
+    for (pwData in paswdAsJson) {
+        if (username === pwData && passwd === paswdAsJson[pwData]) {
             pwFound = true;
+            break;
         }
     }
 
-
     return pwFound;
-}
-
-function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
-    if (password.length >= 128) {
-        return false;
-    }
-    if (salt == "") {
-        salt = randomBytes(16);
-    }
-    console.log(getHashes());
-    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
-    keyAsHex = key.toString('hex');
-    saltAsHex = salt.toString('hex');
-    console.log(keyAsHex);  // // 745e48...08d59ae'
-    user = username.toString();
-    if (save == true) {
-        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
-        jsonDbObject = JSON.stringify(dbObject);
-        fs.writeFile("passwd.json", jsonDbObject, function (err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-    }
-    return keyAsHex;
 }
 
 //routing function which calls the appropriate handler
@@ -157,16 +121,6 @@ function route(req, res) {
         information(req, res);
     } else {
         staticServerHandler(req, res);
-    }
-}
-
-function checkAllowedType(req, res) {
-    allowedTypes = [".js", ".html", ".css"];
-    reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    if (allowedTypes.includes(path.extname(req.url))) {
-        return true;
-    } else {
-        return false;
     }
 }
 
@@ -204,7 +158,6 @@ function typehandling(req, res) {
 function staticServerHandler(req, res) {
     //res.end();
     try {
-        normalizedUrl = path.normalize(req.url);
         reqUrl = new URL(req.url, 'https://' + req.headers.host);
     } catch (e) {
         res.writeHead(404);
@@ -249,7 +202,7 @@ function staticServerHandler(req, res) {
                 break;
         }
 
-    }
+     }
     // else if (reqUrl.pathname.slice(-1) !== '/') {
     //     console.log("has not the ending / inside allowed files")
     //
@@ -305,28 +258,18 @@ function staticServerHandler(req, res) {
 
                 });
             }
-        } //show whats in thte file
-        else {
+        } else {
             //is not a directory it has to be a file or something similar
-            //need to safe it separately because of some kind of scope problem
-            fullPathname=reqUrl.pathname;
-            if (checkAllowedType(req, res)) {
-                fs.readFile(__dirname + fullPathname, function (err, data) {
-                    if (err) {
-                        res.writeHead(404);
-                        res.end(JSON.stringify(err));
-                        return;
-                    }
-                    //res.writeHead(200);
-                    //res.writeHead(200, {'Content-Type': 'text/html'});
-
-                    res.end(data);
-                });
-            } else {
-                res.writeHead(404);
-                res.end("404");
-                return;
-            }
+            fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
+                if (err) {
+                    res.writeHead(404);
+                    res.end(JSON.stringify(err));
+                    return;
+                }
+                //res.writeHead(200);
+                //res.writeHead(200, {'Content-Type': 'text/html'});
+                res.end(data);
+            });
         }
 
     } else {
@@ -752,7 +695,7 @@ async function login(req, res) {
 
 async function logout(req, res) {
     try {
-        if (req.method == "GET") {
+        if(req.method=="GET"){
             res.writeHead(404);
             res.end("not allowed");
             return;
@@ -780,7 +723,7 @@ async function logout(req, res) {
         }
         var cookies = cookie.parse(req.headers.cookie || '');
         //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
-        if (!await cookieHandler("athome-session", false, false, true, cookies["athome-session"])) {
+        if (!await cookieHandler("athome-session",false,false,true,cookies["athome-session"])) {
             res.writeHead(404);
             res.end();
             return;
@@ -835,5 +778,5 @@ var server = https.createServer(options, async (req, res) => {
 
 
 });
-//encryptPW("fisksoppa",100000,"","daniel",true);
+
 server.listen(8000);
