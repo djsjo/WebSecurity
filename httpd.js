@@ -15,9 +15,60 @@ let roomData = {
     livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
+let validcookies = {
+    'athome-session': []
+};
+let currentCookieCount = 1;
 
-function dataController(dataName) {
+function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
+    if (newCookie && cookieName !== "") {
+        cookieId = currentCookieCount;
+        currentCookieCount += 1;
+        validcookies[cookieName].push(cookieId.toString());
+        return cookieId;
 
+    } else if (destroy && cookieId !== "") {
+        for (i = 0; i < validcookies[cookieName].length; i++) {
+            if (validcookies[cookieName][i] === cookieId) {
+                validcookies[cookieName].splice(0, 1);
+            }
+        }
+    } else if (verify && cookieId !== "" && cookieName !== "") {
+        for (i = 0; i < validcookies[cookieName].length; i++) {
+            if (validcookies[cookieName][i] == cookieId) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+//returns the data of the file in the path as a string
+function dataController(pathNameInCurrentDirectory, sync, req, res) {
+    let desiredPath = __dirname + pathNameInCurrentDirectory;
+    let ressourceData = "";
+    if (fs.existsSync(desiredPath)) {
+        console.log(`before readfile in ${pathNameInCurrentDirectory}`);
+
+        //is not a directory it has to be a file or something similar
+        if (!sync) {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something");
+                if (err) {
+                    res.writeHead(404);
+                    res.end(JSON.stringify(err));
+                    return;
+                }
+
+                ressourceData = data;
+            });
+
+            console.log("after readfile in {{pathNameInCurrentDirectory}}")
+        } else {
+            ressourceData = fs.readFileSync(desiredPath, {encoding: "utf-8"});
+        }
+    }
+    return ressourceData;
 }
 
 function encodeData(origData) {
@@ -25,6 +76,24 @@ function encodeData(origData) {
 
 }
 
+//handler function which returns if the credentials are correct
+//and the user ist autehenticated
+async function userAuthenticated(username, passwd, req, res) {
+    passwdData = dataController("/passwd.json", true, req, res);
+    paswdAsJson = JSON.parse(passwdData);
+    console.log("test");
+    pwFound = false;
+    for (pwData in paswdAsJson) {
+        if (username === pwData && passwd === paswdAsJson[pwData]) {
+            pwFound = true;
+            break;
+        }
+    }
+
+    return pwFound;
+}
+
+//routing function which calls the appropriate handler
 function route(req, res) {
     var url_parts = url.parse(req.url, true);
     path1 = decodeURIComponent(url_parts.pathname);
@@ -36,8 +105,10 @@ function route(req, res) {
         }
     }
     //show atHome application
-    if (pathSplit[0] == "login"){
+    if (pathSplit[0] == "login") {
         login(req, res);
+    } else if (pathSplit[0] == "logout") {
+        logout(req, res);
     }
     //show atHome application
     else if (pathSplit[0] == "" && path1 == "/") {
@@ -53,7 +124,7 @@ function route(req, res) {
     }
 }
 
-//returns type of
+//returns type of requested ressource
 function typehandling(req, res) {
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
     // console.log(reqUrl.pathname);
@@ -241,6 +312,12 @@ function atHomeHandler(req, res) {
         req.url = req.url.replace("/information", "/Public");
         //reqNew.url="/Public"+reqNew.url;
         staticServerHandler(req, res);
+        return;
+    }
+    var cookies = cookie.parse(req.headers.cookie || '');
+    if (!cookieHandler("athome-session", false, false, true, cookies["athome-session"])) {
+        res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+        res.end();
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
@@ -491,7 +568,7 @@ function information(req, res) {
 }
 
 //login handler
-function login(req, res) {
+async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
         //reqNew={};
         //console.log(typeof(req));
@@ -558,27 +635,55 @@ function login(req, res) {
 
     } else if (method == "POST") {
         try {
-            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
-            let desiredPath = __dirname + "/templates" + "/login.template";
-            if (fs.existsSync(desiredPath)) {
-                console.log("before readfile in login Post");
-
-                //is not a directory it has to be a file or something similar
-                fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                    console.log("im doing something");
-                    if (err) {
-                        res.writeHead(404);
-                        res.end(JSON.stringify(err));
-                        return;
-                    }
-                    res.writeHead(200, {'Content-Type': 'text/html'});
-                    data=data.replace("none","block");
-
-                    res.end(data);
-                });
-
-                console.log("after readfile in login")
+            let dataAsJson;
+            const buffers = [];
+            for await (const chunk of req) {
+                buffers.push(chunk);
             }
+
+            if (buffers.length !== 0) {
+                const data = Buffer.concat(buffers).toString();
+
+
+                dataAsJson = qs.parse(data);
+                console.log("Bodydata: ");
+                for (dates in dataAsJson) {
+
+                    if (dates == "password") {
+                        console.log(dates + dataAsJson[dates]);
+                    } else {
+                        console.log(dates + ":" + dataAsJson[dates]);
+                    }
+                }
+            }
+            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            if (await userAuthenticated(dataAsJson.username, dataAsJson.password, req, res)) {
+                res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {}));
+                res.writeHead(302, {"Location": "https://" + req.headers['host']})
+                res.end("authenticated");
+            } else {
+                let desiredPath = __dirname + "/templates" + "/login.template";
+                if (fs.existsSync(desiredPath)) {
+                    console.log("before readfile in login Post");
+
+                    //is not a directory it has to be a file or something similar
+                    fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                        console.log("im doing something");
+                        if (err) {
+                            res.writeHead(404);
+                            res.end(JSON.stringify(err));
+                            return;
+                        }
+                        res.writeHead(200, {'Content-Type': 'text/html'});
+                        data = data.replace("none", "block");
+
+                        res.end(data);
+                    });
+
+                    console.log("after readfile in login")
+                }
+            }
+
         } catch (e) {
             res.writeHead(404);
             res.end(JSON.stringify(e));
@@ -586,6 +691,60 @@ function login(req, res) {
         }
     }
 }
+
+async function logout(req, res) {
+    try {
+        if(req.method=="GET"){
+            res.writeHead(404);
+            res.end("not allowed");
+            return;
+        }
+        let dataAsJson;
+        const buffers = [];
+        for await (const chunk of req) {
+            buffers.push(chunk);
+        }
+
+        if (buffers.length !== 0) {
+            const data = Buffer.concat(buffers).toString();
+
+
+            dataAsJson = qs.parse(data);
+            console.log("Bodydata: ");
+            for (dates in dataAsJson) {
+
+                if (dates == "password") {
+                    console.log(dates + dataAsJson[dates]);
+                } else {
+                    console.log(dates + ":" + dataAsJson[dates]);
+                }
+            }
+        }
+        var cookies = cookie.parse(req.headers.cookie || '');
+        //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+        if (!await cookieHandler("athome-session",false,false,true,cookies["athome-session"])) {
+            res.writeHead(404);
+            res.end();
+            return;
+        } else {
+
+
+            cookieHandler("athome-session", false, true, false, cookies["athome-session"]);
+            //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            res.writeHead(302, {"Location": "/login"})
+
+            res.end();
+            return;
+        }
+
+    } catch (e) {
+        res.writeHead(404);
+        res.end(JSON.stringify(e));
+        return;
+    }
+
+}
+
 
 //options for https
 const options = {
@@ -596,10 +755,9 @@ const options = {
 var server = https.createServer(options, async (req, res) => {
     logStuff(req, res);
 
-    const buffers = [];
 
     // let data = '';
-    let dataAsJson;
+
     // req.on('data', chunk => {
     //     console.log(`Data chunk available: ${chunk}`)
     //     data += chunk;
@@ -613,25 +771,7 @@ var server = https.createServer(options, async (req, res) => {
     //         }
     //     }
     // })
-    for await (const chunk of req) {
-        buffers.push(chunk);
-    }
 
-    if (buffers.length !== 0) {
-        const data = Buffer.concat(buffers).toString();
-
-
-        dataAsJson = qs.parse(data);
-        console.log("Bodydata: ");
-        for (dates in dataAsJson) {
-
-            if (dates == "password") {
-                console.log("lenght:" + dataAsJson[dates].length);
-            } else {
-                console.log(dates + ":" + dataAsJson[dates]);
-            }
-        }
-    }
 
     route(req, res);
 
