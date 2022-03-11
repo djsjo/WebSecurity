@@ -40,11 +40,22 @@ Aufgabe 2:
 	
 
 todo:
--zertifikate anlegentod
--server auf https umstellen
+-iwie kann man trotzdem nach einloggen noch in / und in hauptseite ändert sich button behaviour nach refresh
+
+protect logout?
+-iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist
+
+
 -mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
 -js object for valid cookies
 	-evtl. cookie handler
+	
+-pw handler der checkt ob pw existiert bzw. falsch ist
+	->erst file lesen dann JSON.parse
+-logout handler 
+	-logout option hinzufügen und auch in javascript onclickhandler eintragen
+-getCookieid handler
+-sammlung der gültigen cookies
 	
 für angriffe:
 -man kann viel bei cookies ausnutzen

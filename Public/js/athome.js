@@ -16,7 +16,6 @@ let temps = {
 
 function refresh() {
   console.log("refresh");
-
   for (let id in lights) {
     let path = '' + lights[id];
     $.getJSON(path, data => {
@@ -40,5 +39,14 @@ function clickLight(id) {
   $.post(path, res => {
     $('#' + id).attr('class', res ? 'btn btn-warning btn-sm' : 'btn btn-secondary btn-sm');
   });
+
+}
+function logout() {
+  let path = '/logout';
+  $.post(path, res => {
+    //$.setHeader(302,{"Location": "/login"});
+    window.location.replace("https://localhost:8000/login");
+  });
+  //window.location.replace("https://localhost:8000/login")
 
 }
