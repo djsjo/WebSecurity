@@ -202,13 +202,14 @@ function staticServerHandler(req, res) {
                 break;
         }
 
-    } else if (reqUrl.pathname.slice(-1) !== '/') {
-        console.log("has not the ending / inside allowed files")
-
-        console.log("has not /");
-        reqUrl.pathname += '/';
-        req.url += "/";
-    }
+     }
+    // else if (reqUrl.pathname.slice(-1) !== '/') {
+    //     console.log("has not the ending / inside allowed files")
+    //
+    //     console.log("has not /");
+    //     reqUrl.pathname += '/';
+    //     req.url += "/";
+    // }
 
 
     //check if if path exists
