@@ -202,7 +202,7 @@ function staticServerHandler(req, res) {
                 break;
         }
 
-     }
+    }
     // else if (reqUrl.pathname.slice(-1) !== '/') {
     //     console.log("has not the ending / inside allowed files")
     //
@@ -695,7 +695,7 @@ async function login(req, res) {
 
 async function logout(req, res) {
     try {
-        if(req.method=="GET"){
+        if (req.method == "GET") {
             res.writeHead(404);
             res.end("not allowed");
             return;
@@ -723,7 +723,7 @@ async function logout(req, res) {
         }
         var cookies = cookie.parse(req.headers.cookie || '');
         //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
-        if (!await cookieHandler("athome-session",false,false,true,cookies["athome-session"])) {
+        if (!await cookieHandler("athome-session", false, false, true, cookies["athome-session"])) {
             res.writeHead(404);
             res.end();
             return;

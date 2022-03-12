@@ -2,9 +2,17 @@ var https = require('https');
 var fs = require('fs');
 var qs = require('querystring');
 var cookie = require('cookie');
-//const {url} = require('inspector');
 const path = require('path');
 const url = require('url');
+const {
+    getHashes
+} = require('crypto');
+const {
+    pbkdf2Sync
+} = require('crypto');
+const {
+    randomBytes,
+} = require('crypto');
 
 let rooms = ["livingroom",
     "bedroom",
@@ -16,29 +24,49 @@ let roomData = {
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
 let validcookies = {
-    'athome-session': []
+    'athome-session': {}
 };
 let currentCookieCount = 1;
 
+
+function deleteOldCookies(keepAliveTime) {
+    currentTime = Date.now();
+    console.log(Date.now() + "hello Geek" + keepAliveTime);
+    for (cookieTypes in validcookies) {
+        for (eachCookie in validcookies[cookieTypes]) {
+            if ((currentTime - validcookies[cookieTypes][eachCookie]) >= keepAliveTime) {
+                delete validcookies[cookieTypes][eachCookie];
+            }
+        }
+    }
+
+
+}
+
+//responsible for generating new cookies, deleting cookies etc. based on the parameter
 function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
+
     if (newCookie && cookieName !== "") {
-        cookieId = currentCookieCount;
-        currentCookieCount += 1;
-        validcookies[cookieName].push(cookieId.toString());
+
+        cookieId = randomBytes(16).toString('hex');
+        //checks if cookieId already exists
+        if (cookieId in validcookies[cookieName]) {
+            cookieId = randomBytes(16).toString('hex');
+        }
+
+        validcookies[cookieName][cookieId] = Date.now();
         return cookieId;
 
     } else if (destroy && cookieId !== "") {
-        for (i = 0; i < validcookies[cookieName].length; i++) {
-            if (validcookies[cookieName][i] === cookieId) {
-                validcookies[cookieName].splice(0, 1);
-            }
+        if (cookieId in validcookies[cookieName]) {
+            delete validcookies[cookieName][cookieId];
+            //return true;
         }
     } else if (verify && cookieId !== "" && cookieName !== "") {
-        for (i = 0; i < validcookies[cookieName].length; i++) {
-            if (validcookies[cookieName][i] == cookieId) {
-                return true;
-            }
+        if (cookieId in validcookies[cookieName]) {
+            return true;
         }
+        //}
         return false;
     }
 }
@@ -77,20 +105,47 @@ function encodeData(origData) {
 }
 
 //handler function which returns if the credentials are correct
-//and the user ist autehenticated
+//and the user ist authenticated
 async function userAuthenticated(username, passwd, req, res) {
     passwdData = dataController("/passwd.json", true, req, res);
     paswdAsJson = JSON.parse(passwdData);
     console.log("test");
     pwFound = false;
-    for (pwData in paswdAsJson) {
-        if (username === pwData && passwd === paswdAsJson[pwData]) {
+    if (paswdAsJson[username]) {
+        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+
+        if (passwdHash === paswdAsJson[username]["password"]) {
             pwFound = true;
-            break;
         }
     }
 
+
     return pwFound;
+}
+
+function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
+    if (password.length >= 128) {
+        return false;
+    }
+    if (salt == "") {
+        salt = randomBytes(16);
+    }
+    console.log(getHashes());
+    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
+    keyAsHex = key.toString('hex');
+    saltAsHex = salt.toString('hex');
+    console.log(keyAsHex);  // // 745e48...08d59ae'
+    user = username.toString();
+    if (save == true) {
+        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
+        jsonDbObject = JSON.stringify(dbObject);
+        fs.writeFile("passwd.json", jsonDbObject, function (err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+    }
+    return keyAsHex;
 }
 
 //routing function which calls the appropriate handler
@@ -124,12 +179,19 @@ function route(req, res) {
     }
 }
 
+function checkAllowedType(req, res) {
+    allowedTypes = [".js", ".html", ".css"];
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
+    if (allowedTypes.includes(path.extname(req.url))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 //returns type of requested ressource
 function typehandling(req, res) {
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
@@ -158,15 +220,13 @@ function typehandling(req, res) {
 function staticServerHandler(req, res) {
     //res.end();
     try {
+        normalizedUrl = path.normalize(req.url);
         reqUrl = new URL(req.url, 'https://' + req.headers.host);
     } catch (e) {
         res.writeHead(404);
         res.end("404 Eror");
         return;
     }
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
@@ -202,15 +262,7 @@ function staticServerHandler(req, res) {
                 break;
         }
 
-     }
-    // else if (reqUrl.pathname.slice(-1) !== '/') {
-    //     console.log("has not the ending / inside allowed files")
-    //
-    //     console.log("has not /");
-    //     reqUrl.pathname += '/';
-    //     req.url += "/";
-    // }
-
+    }
 
     //check if if path exists
     if (fs.existsSync(__dirname + reqUrl.pathname)) {
@@ -249,7 +301,6 @@ function staticServerHandler(req, res) {
                     for (i = 0; i < data.length; i++) {
                         res.write('<tr><td>' + data[i]
                             + '</td></tr>')
-                        //res.write(data[i]+"<br>");
                         console.log(data[i]);
                     }
                     res.write("</table>");
@@ -258,18 +309,28 @@ function staticServerHandler(req, res) {
 
                 });
             }
-        } else {
+        } //show whats in the file
+        else {
             //is not a directory it has to be a file or something similar
-            fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
-                if (err) {
-                    res.writeHead(404);
-                    res.end(JSON.stringify(err));
-                    return;
-                }
-                //res.writeHead(200);
-                //res.writeHead(200, {'Content-Type': 'text/html'});
-                res.end(data);
-            });
+            //need to safe it separately because of some kind of scope problem
+            fullPathname = reqUrl.pathname;
+            if (checkAllowedType(req, res)) {
+                fs.readFile(__dirname + fullPathname, function (err, data) {
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    //res.writeHead(200);
+                    //res.writeHead(200, {'Content-Type': 'text/html'});
+
+                    res.end(data);
+                });
+            } else {
+                res.writeHead(404);
+                res.end("404");
+                return;
+            }
         }
 
     } else {
@@ -317,34 +378,27 @@ function atHomeHandler(req, res) {
     }
     var cookies = cookie.parse(req.headers.cookie || '');
     if (!cookieHandler("athome-session", false, false, true, cookies["athome-session"])) {
+        res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+            maxAge: -1  // invalidate
+        }));
+
         res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
         res.end();
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     /* replace {{method}} with the request method
@@ -396,27 +450,6 @@ function atHomeHandler(req, res) {
                     res.end(JSON.stringify(err));
                     return;
                 }
-                // data = data.replace("{{method}}", method.toString());
-                // data = data.replace("{{path}}", path1.toString());
-                //
-                // if (query !== null) {
-                //     data = data.replace("{{query}}", query.toString());
-                //     queryTable = "";
-                //     queryTable += "<table>" +
-                //         "<tr>" +
-                //         "<th>Variable</th>" +
-                //         "<th>Value</th>" +
-                //         "</tr>";
-                //     for (i = 0; i < allKeys.length; i++) {
-                //         queryTable += '<tr><td>' + allKeys[i]
-                //             + '</td>' +
-                //             `<td>${allValues[i]}</td>` + '</tr>'
-                //         //res.write(data[i]+"<br>");
-                //     }
-                //     queryTable += "</table>";
-                //
-                //     data = data.replace("{{queries}}", queryTable.toString())
-                // }
                 res.writeHead(200, {'Content-Type': 'text/html'});
                 res.end(data);
             });
@@ -469,10 +502,6 @@ function atHomeHandler(req, res) {
         }
     }
 
-// read as string
-
-//
-
 }
 
 //information handler
@@ -486,40 +515,23 @@ function information(req, res) {
      */
     //the case if the css etc is asked for
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
-        //reqNew={};
-        //console.log(typeof(req));
-        //resNew={};
-        // Object.assign(reqNew,req);
-        // Object.assign(resNew,res);
         req.url = req.url.replace("/information", "/Public");
-        //reqNew.url="/Public"+reqNew.url;
         staticServerHandler(req, res);
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     let desiredPath = __dirname + "/templates" + "/information.template";
@@ -549,7 +561,6 @@ function information(req, res) {
                     queryTable += '<tr><td>' + allKeys[i]
                         + '</td>' +
                         `<td>${allValues[i]}</td>` + '</tr>'
-                    //res.write(data[i]+"<br>");
                 }
                 queryTable += "</table>";
 
@@ -562,54 +573,33 @@ function information(req, res) {
         console.log("after readfile in information")
     }
 
-    // read as string
-
-    //
-
 }
 
 //login handler
 async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
-        //reqNew={};
-        //console.log(typeof(req));
-        //resNew={};
-        // Object.assign(reqNew,req);
-        // Object.assign(resNew,res);
         req.url = req.url.replace("/information", "/Public");
         //reqNew.url="/Public"+reqNew.url;
         staticServerHandler(req, res);
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     if (method == "GET") {
         try {
-            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
             let desiredPath = __dirname + "/templates" + "/login.template";
             if (fs.existsSync(desiredPath)) {
                 console.log("before readfile in login");
@@ -659,7 +649,9 @@ async function login(req, res) {
             }
             //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
             if (await userAuthenticated(dataAsJson.username, dataAsJson.password, req, res)) {
-                res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {}));
+                res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {
+                    maxAge: 60 * 30  // 30 minutes
+                }));
                 res.writeHead(302, {"Location": "https://" + req.headers['host']})
                 res.end("authenticated");
             } else {
@@ -695,7 +687,7 @@ async function login(req, res) {
 
 async function logout(req, res) {
     try {
-        if(req.method=="GET"){
+        if (req.method == "GET") {
             res.writeHead(404);
             res.end("not allowed");
             return;
@@ -723,8 +715,14 @@ async function logout(req, res) {
         }
         var cookies = cookie.parse(req.headers.cookie || '');
         //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
-        if (!await cookieHandler("athome-session",false,false,true,cookies["athome-session"])) {
+        //cookie doesnt exist
+        if (!await cookieHandler("athome-session", false, false, true, cookies["athome-session"])) {
+            //invalidate the client cookie
+            res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));
             res.writeHead(404);
+
             res.end();
             return;
         } else {
@@ -732,6 +730,9 @@ async function logout(req, res) {
 
             cookieHandler("athome-session", false, true, false, cookies["athome-session"]);
             //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));
             res.writeHead(302, {"Location": "/login"})
 
             res.end();
@@ -757,26 +758,11 @@ var server = https.createServer(options, async (req, res) => {
     logStuff(req, res);
 
 
-    // let data = '';
-
-    // req.on('data', chunk => {
-    //     console.log(`Data chunk available: ${chunk}`)
-    //     data += chunk;
-    // })
-    // req.on('end', () => {
-    //     if (data != '') {
-    //         dataAsJson = qs.parse(data);
-    //         console.log("Bodydata: ");
-    //         for (dates in dataAsJson) {
-    //             console.log(dates+":"+dataAsJson[dates]);
-    //         }
-    //     }
-    // })
-
-
     route(req, res);
 
 
 });
-
+//encryptPW("fisksoppa",100000,"","daniel",true);
+const deleteIntervall = 1000 * 60 * 30;
+setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 server.listen(8000);
