@@ -99,7 +99,44 @@ links:
 -javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/
 -storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
 -bootstrap button https://getbootstrap.com/docs/4.1/components/buttons/
-
+-nodejs redirect https://www.tutorialkart.com/nodejs/node-js-redirect-url/
+-nodejs hmac crypto https://stackoverflow.com/questions/20004530/node-js-hmac-sha256-base64-of-string
+-js variable property by name https://stackoverflow.com/questions/4255472/javascript-object-access-variable-property-by-name-as-string
+-js https://stackoverflow.com/questions/6084858/javascript-use-variable-as-object-name
+-buffer tostring https://masteringjs.io/tutorials/node/buffer-to-string
+-url and parts in js https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+-encode uri https://www.w3schools.com/jsref/jsref_encodeuri.asp
+-js remove item from array: https://stackoverflow.com/questions/5767325/how-can-i-remove-a-specific-item-from-an-array
+-nodejs learn :https://nodejs.dev/learn/nodejs-file-paths
+-json overview https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+-working with json https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/JSON
+-json stringify https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+-bootstrap buttons : https://getbootstrap.com/docs/4.1/components/buttons/
+-user authentication video: https://www.youtube.com/watch?v=MT7X17ZRo1U
+-article on authentication authorization: https://docs.microsoft.com/en-us/previous-versions/tn-archive/cc512578(v=technet.10)
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-types of attack session fixation etc https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks#session_fixation
+-set cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#browser_compatibility
+-npm cookie package: https://www.npmjs.com/package/cookie
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-document.getelementbyid: https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById
+-package lock: https://docs.npmjs.com/cli/v8/configuring-npm/package-lock-json
+-path traversal: https://owasp.org/www-community/attacks/Path_Traversal
+-path traversal owasp: https://wiki.owasp.org/index.php/Path_Traversal
+-password security: https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/
+-string normalize: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
+-buffer class: https://nodejs.org/api/buffer.html#class-buffer
+-session management cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-properties
+-crypto nodejs api: https://nodejs.org/api/crypto.html#using-strings-as-inputs-to-cryptographic-apis
+-ajax get json: https://www.w3schools.com/jquery/ajax_getjson.asp
+-jquery getjson: https://api.jquery.com/jquery.getjson/
+-key exists in js object: https://stackoverflow.com/questions/1098040/checking-if-a-key-exists-in-a-javascript-object
+-convert string buffer: https://melvingeorge.me/blog/convert-string-buffer-nodejs
+-common jscript problems https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Cross_browser_testing/JavaScript
+-location reload: https://developer.mozilla.org/en-US/docs/Web/API/Location/reload
+-substring replace: https://stackoverflow.com/questions/16702357/how-to-replace-a-substring-of-a-string
+-debugging getting started nodejs https://nodejs.org/en/docs/guides/debugging-getting-started/
+-javasript function as name: https://www.inflectra.com/support/knowledgebase/kb242.aspx
 -set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
 -cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies	
 -js pass by value https://www.javascripttutorial.net/javascript-pass-by-value/							
