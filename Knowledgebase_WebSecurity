@@ -98,6 +98,7 @@ links:
 -url parts https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
 -javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/
 -storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-bootstrap button https://getbootstrap.com/docs/4.1/components/buttons/
 
 -set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
 -cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies	
@@ -108,20 +109,31 @@ morgen:
 -at first i tried randomized a lot of long password or parameters
 
 
-Path Traversal Attack:
+Stealing the password file:
+
 I started by directly putting "https://localhost:8000/passwd.json" into the search bar and got the input of the passwd file.
 Something like "https://localhost:8000/..%c0%af" didnt work because an uri malformed error was thrown.
 
 All unknown files etc. are handled by my "staticserverrHandler". There I use the URL functionalities which dont accept the encoded or double encoded versions of ".." etc.
-As the main protection i added a function which checks the allowed files and its ending. If its not an allowed fileending i just send back an 404 error.
+As the main protection i added a function which checks the allowed files and its endings. If its not an allowed fileending i just send back an 404 error.
 
-I tried also "https://localhost:8000/passwd.json%00.js" to trick the filesystem into thinking its a allow fileending but this was also prevented.
+I tried also "https://localhost:8000/passwd.json%00.js" to trick the filesystem into thinking its an allowed fileending but this lead to no success.
 
-I made an extra function and encrypted the pw with pbkdf2Sync and the salt with randombytes(16) from the crypto functions. I saved the encrypted pw, salt and iterations (100000) int my passwordfile.
+I made an extra function and encrypted the pw with pbkdf2Sync and the salt with randombytes(16) from the crypto functions. I saved the encrypted pw, salt and iterations (100.000) in my passwordfile.
 
-Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. i fixed it by saving the needed variable specifically.
+Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. I fixed it by saving the needed variable specifically.
 
 
+Session hijacking:
+I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
+
+I thought about changing the cookie name but decided to keep it because of the assignment description.
+By modifying my cookieHandler function and using randombytes(16) i sufficed the recommended session id length. The rest of the handler works basically still the same.
+
+The maxAge of the new Cookies is 30 minutes and every time when the cookies were not in the valid list or when we destroyed the cookies we also sent an invalidation to the client via a negative max age and no value.
+To be sure on the server side i changed my datastructure and saved the cookieid and the timestamp accordingly. The setIntervall method helped me to regularly check if something needds to be deleted. That how i keept my active sessions in order.
+
+As a bonus i check on the client side for the success of the xhr.If it fails and the cookie was invalidated (for example because its no valid cookie) i refresh the Page which mostly lead to a redirect to the loginpage.
 
 todo: password protection noch machen, session hijacking
 
