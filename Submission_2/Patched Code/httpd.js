@@ -2,7 +2,6 @@ var https = require('https');
 var fs = require('fs');
 var qs = require('querystring');
 var cookie = require('cookie');
-//const {url} = require('inspector');
 const path = require('path');
 const url = require('url');
 const {
@@ -30,7 +29,6 @@ let validcookies = {
 let currentCookieCount = 1;
 
 
-
 function deleteOldCookies(keepAliveTime) {
     currentTime = Date.now();
     console.log(Date.now() + "hello Geek" + keepAliveTime);
@@ -45,23 +43,18 @@ function deleteOldCookies(keepAliveTime) {
 
 }
 
+//responsible for generating new cookies, deleting cookies etc. based on the parameter
 function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
 
     if (newCookie && cookieName !== "") {
 
         cookieId = randomBytes(16).toString('hex');
         //checks if cookieId already exists
-        // while(validcookies[cookieName].cookieId){
-        //     cookieId = randomBytes(16).toString('hex');
-        // }
-        //currentCookieCount += 1;
         if (cookieId in validcookies[cookieName]) {
             cookieId = randomBytes(16).toString('hex');
-            //return true;
         }
 
         validcookies[cookieName][cookieId] = Date.now();
-        //validcookies[cookieName].push(cookieObject);
         return cookieId;
 
     } else if (destroy && cookieId !== "") {
@@ -70,7 +63,6 @@ function cookieHandler(cookieName = "", newCookie = true, destroy = false, verif
             //return true;
         }
     } else if (verify && cookieId !== "" && cookieName !== "") {
-        //for (i = 0; i < validcookies[cookieName].length; i++) {
         if (cookieId in validcookies[cookieName]) {
             return true;
         }
@@ -113,7 +105,7 @@ function encodeData(origData) {
 }
 
 //handler function which returns if the credentials are correct
-//and the user ist autehenticated
+//and the user ist authenticated
 async function userAuthenticated(username, passwd, req, res) {
     passwdData = dataController("/passwd.json", true, req, res);
     paswdAsJson = JSON.parse(passwdData);
@@ -200,9 +192,6 @@ function checkAllowedType(req, res) {
 //returns type of requested ressource
 function typehandling(req, res) {
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
@@ -238,9 +227,6 @@ function staticServerHandler(req, res) {
         res.end("404 Eror");
         return;
     }
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     //change file endeing when path doesnt end with a file
     if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
         console.log("is one of the allowed files")
@@ -277,14 +263,6 @@ function staticServerHandler(req, res) {
         }
 
     }
-    // else if (reqUrl.pathname.slice(-1) !== '/') {
-    //     console.log("has not the ending / inside allowed files")
-    //
-    //     console.log("has not /");
-    //     reqUrl.pathname += '/';
-    //     req.url += "/";
-    // }
-
 
     //check if if path exists
     if (fs.existsSync(__dirname + reqUrl.pathname)) {
@@ -323,7 +301,6 @@ function staticServerHandler(req, res) {
                     for (i = 0; i < data.length; i++) {
                         res.write('<tr><td>' + data[i]
                             + '</td></tr>')
-                        //res.write(data[i]+"<br>");
                         console.log(data[i]);
                     }
                     res.write("</table>");
@@ -332,7 +309,7 @@ function staticServerHandler(req, res) {
 
                 });
             }
-        } //show whats in thte file
+        } //show whats in the file
         else {
             //is not a directory it has to be a file or something similar
             //need to safe it separately because of some kind of scope problem
@@ -410,29 +387,18 @@ function atHomeHandler(req, res) {
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     /* replace {{method}} with the request method
@@ -484,27 +450,6 @@ function atHomeHandler(req, res) {
                     res.end(JSON.stringify(err));
                     return;
                 }
-                // data = data.replace("{{method}}", method.toString());
-                // data = data.replace("{{path}}", path1.toString());
-                //
-                // if (query !== null) {
-                //     data = data.replace("{{query}}", query.toString());
-                //     queryTable = "";
-                //     queryTable += "<table>" +
-                //         "<tr>" +
-                //         "<th>Variable</th>" +
-                //         "<th>Value</th>" +
-                //         "</tr>";
-                //     for (i = 0; i < allKeys.length; i++) {
-                //         queryTable += '<tr><td>' + allKeys[i]
-                //             + '</td>' +
-                //             `<td>${allValues[i]}</td>` + '</tr>'
-                //         //res.write(data[i]+"<br>");
-                //     }
-                //     queryTable += "</table>";
-                //
-                //     data = data.replace("{{queries}}", queryTable.toString())
-                // }
                 res.writeHead(200, {'Content-Type': 'text/html'});
                 res.end(data);
             });
@@ -557,10 +502,6 @@ function atHomeHandler(req, res) {
         }
     }
 
-// read as string
-
-//
-
 }
 
 //information handler
@@ -574,40 +515,23 @@ function information(req, res) {
      */
     //the case if the css etc is asked for
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
-        //reqNew={};
-        //console.log(typeof(req));
-        //resNew={};
-        // Object.assign(reqNew,req);
-        // Object.assign(resNew,res);
         req.url = req.url.replace("/information", "/Public");
-        //reqNew.url="/Public"+reqNew.url;
         staticServerHandler(req, res);
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     let desiredPath = __dirname + "/templates" + "/information.template";
@@ -637,7 +561,6 @@ function information(req, res) {
                     queryTable += '<tr><td>' + allKeys[i]
                         + '</td>' +
                         `<td>${allValues[i]}</td>` + '</tr>'
-                    //res.write(data[i]+"<br>");
                 }
                 queryTable += "</table>";
 
@@ -650,54 +573,33 @@ function information(req, res) {
         console.log("after readfile in information")
     }
 
-    // read as string
-
-    //
-
 }
 
 //login handler
 async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
-        //reqNew={};
-        //console.log(typeof(req));
-        //resNew={};
-        // Object.assign(reqNew,req);
-        // Object.assign(resNew,res);
         req.url = req.url.replace("/information", "/Public");
         //reqNew.url="/Public"+reqNew.url;
         staticServerHandler(req, res);
         return;
     }
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    // console.log(reqUrl.pathname);
-    // console.log(reqUrl.searchParams);
-    // console.log(path.extname(reqUrl.pathname));
     var url_parts = url.parse(req.url, true);
 
     method = req.method;
     path1 = decodeURIComponent(url_parts.pathname);
     query = url_parts.search;
-    // "url:" + req.url + " " +
-    // "content-type: " + req.headers["content-type"] + " " +
-    // "httpVersion: " + req.httpVersion + " " +
-    // "dirName: " + __dirname + ' ');
     allKeysUnencoded = Object.keys(url_parts.query);
     allValuesUnencoded = Object.values(url_parts.query);
-    // allKeys=allKeysUnencoded;
-    // allValues=allValuesUnencoded;
     allKeys = [];
     allValues = [];
     for (i = 0; i < allKeysUnencoded.length; i++) {
         allKeys[i] = encodeData(allKeysUnencoded[i]);
         allValues[i] = encodeData(allValuesUnencoded[i]);
-
-        //res.write(data[i]+"<br>");
     }
 
     if (method == "GET") {
         try {
-            //stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
             let desiredPath = __dirname + "/templates" + "/login.template";
             if (fs.existsSync(desiredPath)) {
                 console.log("before readfile in login");
@@ -854,23 +756,6 @@ const options = {
 
 var server = https.createServer(options, async (req, res) => {
     logStuff(req, res);
-
-
-    // let data = '';
-
-    // req.on('data', chunk => {
-    //     console.log(`Data chunk available: ${chunk}`)
-    //     data += chunk;
-    // })
-    // req.on('end', () => {
-    //     if (data != '') {
-    //         dataAsJson = qs.parse(data);
-    //         console.log("Bodydata: ");
-    //         for (dates in dataAsJson) {
-    //             console.log(dates+":"+dataAsJson[dates]);
-    //         }
-    //     }
-    // })
 
 
     route(req, res);

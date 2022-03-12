@@ -1,0 +1,10 @@
+Session hijacking:
+I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
+
+I thought about changing the cookie name but decided to keep it because of the assignment description.
+By modifying my cookieHandler function and using randombytes(16) i sufficed the recommended session id length. The rest of the handler works basically still the same.
+
+The maxAge of the new Cookies is 30 minutes and every time when the cookies were not in the valid list or when we destroyed the cookies we also sent an invalidation to the client via a negative max age and no value.
+To be sure on the server side i changed my datastructure and saved the cookieid and the timestamp accordingly. The setIntervall method helped me to regularly check if something needds to be deleted. That how i keept my active sessions in order.
+
+As a bonus i check on the client side for the success of the xhr. If it fails and the cookie was invalidated (for example because its no valid cookie) i refresh the Page which mostly lead to a redirect to the loginpage.

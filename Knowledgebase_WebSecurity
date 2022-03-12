@@ -6,7 +6,7 @@ response.writeHead(200, { 'Content-Type': 'text/plain',
           serve static content                https://nodejs.org/en/knowledge/HTTP/servers/how-to-serve-static-files/ 
           
           
-
+		
 
 Aufgabe 1:
 -Exercise 1: Hello World  DONE	
@@ -16,11 +16,51 @@ Aufgabe 1:
 -Exercise 4: content generation DONE
 -DOS
 
+Aufgabe 2:
+-single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
+-load information from server about lights etc. regularly
+-routing and applicationpaths
+	-wie mache ich routingtabellen
+	-main page wird aus template generiert und nimmt die aktuellen werte. path /
+	- AJAX GET requests to /:room/lights/:light oder /:room/temperature
+		-response json encoded sensor state
+	-for switch client sends AJAX POST requests to /:room/lights/:light e.g.
+	-wie mache ich ne routing table?
+	-alle routen eintragen
+	-bei get nen json mit model zurücksenden
+	-bei post anpassen des data models und zurücksenden des neuen status
+	-routing table über switch case weiterhin (evtl. nested)
+	-datamodel als variable oder javascript objekt
+	-route parameters named? params property von request object?, named url segments?
+-the client
+	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
+	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückgesendet
+
+	
+	
 
 todo:
+-iwie kann man trotzdem nach einloggen noch in / und in hauptseite ändert sich button behaviour nach refresh
+
+protect logout?
+-iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist
 
 
 -mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
+-js object for valid cookies
+	-evtl. cookie handler
+	
+-pw handler der checkt ob pw existiert bzw. falsch ist
+	->erst file lesen dann JSON.parse
+-logout handler 
+	-logout option hinzufügen und auch in javascript onclickhandler eintragen
+-getCookieid handler
+-sammlung der gültigen cookies
+	
+für angriffe:
+-man kann viel bei cookies ausnutzen
+
+	
 
 
 
@@ -48,13 +88,91 @@ links:
 -types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
 -cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
 -testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
-
+-dom based xss prevention sheet https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html
+-denial of service https://owasp.org/www-community/attacks/Denial_of_Service
+-query string nodejs https://stackoverflow.com/questions/6912584/how-to-get-get-query-string-variables-in-express-js-on-node-js?rq=1
+-Object keys: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+-strings in js https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/Strings
+-bootstrap badges https://getbootstrap.com/docs/4.1/components/badge/
+-ajax beispiel : https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
+-url parts https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+-javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-bootstrap button https://getbootstrap.com/docs/4.1/components/buttons/
+-nodejs redirect https://www.tutorialkart.com/nodejs/node-js-redirect-url/
+-nodejs hmac crypto https://stackoverflow.com/questions/20004530/node-js-hmac-sha256-base64-of-string
+-js variable property by name https://stackoverflow.com/questions/4255472/javascript-object-access-variable-property-by-name-as-string
+-js https://stackoverflow.com/questions/6084858/javascript-use-variable-as-object-name
+-buffer tostring https://masteringjs.io/tutorials/node/buffer-to-string
+-url and parts in js https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+-encode uri https://www.w3schools.com/jsref/jsref_encodeuri.asp
+-js remove item from array: https://stackoverflow.com/questions/5767325/how-can-i-remove-a-specific-item-from-an-array
+-nodejs learn :https://nodejs.dev/learn/nodejs-file-paths
+-json overview https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+-working with json https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/JSON
+-json stringify https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+-bootstrap buttons : https://getbootstrap.com/docs/4.1/components/buttons/
+-user authentication video: https://www.youtube.com/watch?v=MT7X17ZRo1U
+-article on authentication authorization: https://docs.microsoft.com/en-us/previous-versions/tn-archive/cc512578(v=technet.10)
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-types of attack session fixation etc https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks#session_fixation
+-set cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#browser_compatibility
+-npm cookie package: https://www.npmjs.com/package/cookie
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-document.getelementbyid: https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById
+-package lock: https://docs.npmjs.com/cli/v8/configuring-npm/package-lock-json
+-path traversal: https://owasp.org/www-community/attacks/Path_Traversal
+-path traversal owasp: https://wiki.owasp.org/index.php/Path_Traversal
+-password security: https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/
+-string normalize: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
+-buffer class: https://nodejs.org/api/buffer.html#class-buffer
+-session management cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-properties
+-crypto nodejs api: https://nodejs.org/api/crypto.html#using-strings-as-inputs-to-cryptographic-apis
+-ajax get json: https://www.w3schools.com/jquery/ajax_getjson.asp
+-jquery getjson: https://api.jquery.com/jquery.getjson/
+-key exists in js object: https://stackoverflow.com/questions/1098040/checking-if-a-key-exists-in-a-javascript-object
+-convert string buffer: https://melvingeorge.me/blog/convert-string-buffer-nodejs
+-common jscript problems https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Cross_browser_testing/JavaScript
+-location reload: https://developer.mozilla.org/en-US/docs/Web/API/Location/reload
+-substring replace: https://stackoverflow.com/questions/16702357/how-to-replace-a-substring-of-a-string
+-debugging getting started nodejs https://nodejs.org/en/docs/guides/debugging-getting-started/
+-javasript function as name: https://www.inflectra.com/support/knowledgebase/kb242.aspx
+-set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
+-cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies	
+-js pass by value https://www.javascripttutorial.net/javascript-pass-by-value/							
 
 morgen:
 -auf /information ohne query zugreifen
 -at first i tried randomized a lot of long password or parameters
 
 
+Stealing the password file:
+
+I started by directly putting "https://localhost:8000/passwd.json" into the search bar and got the input of the passwd file.
+Something like "https://localhost:8000/..%c0%af" didnt work because an uri malformed error was thrown.
+
+All unknown files etc. are handled by my "staticserverrHandler". There I use the URL functionalities which dont accept the encoded or double encoded versions of ".." etc.
+As the main protection i added a function which checks the allowed files and its endings. If its not an allowed fileending i just send back an 404 error.
+
+I tried also "https://localhost:8000/passwd.json%00.js" to trick the filesystem into thinking its an allowed fileending but this lead to no success.
+
+I made an extra function and encrypted the pw with pbkdf2Sync and the salt with randombytes(16) from the crypto functions. I saved the encrypted pw, salt and iterations (100.000) in my passwordfile.
+
+Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. I fixed it by saving the needed variable specifically.
+
+
+Session hijacking:
+I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
+
+I thought about changing the cookie name but decided to keep it because of the assignment description.
+By modifying my cookieHandler function and using randombytes(16) i sufficed the recommended session id length. The rest of the handler works basically still the same.
+
+The maxAge of the new Cookies is 30 minutes and every time when the cookies were not in the valid list or when we destroyed the cookies we also sent an invalidation to the client via a negative max age and no value.
+To be sure on the server side i changed my datastructure and saved the cookieid and the timestamp accordingly. The setIntervall method helped me to regularly check if something needds to be deleted. That how i keept my active sessions in order.
+
+As a bonus i check on the client side for the success of the xhr.If it fails and the cookie was invalidated (for example because its no valid cookie) i refresh the Page which mostly lead to a redirect to the loginpage.
+
+todo: password protection noch machen, session hijacking
 
 DOS attack
 i read about dos attacks and thought of the different possiblities my code could be attackable.
