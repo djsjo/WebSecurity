@@ -52,6 +52,7 @@ function signin(button) {
             data: JSON.stringify(credentials),
             contentType: 'application/json',
             success: res => {
+                console.log(res);
                 if (res) {
                     location.reload();
                 } else {

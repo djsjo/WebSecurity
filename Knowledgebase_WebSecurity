@@ -40,11 +40,12 @@ ________________________________________________________________________________
 	
 
 todo:
--sessionmiddlewareschreiben und cookieparser
 -serverseitig json senden mit type json usw
 {"sessionid":"c8a17f8228608dfceea391a23bcc1870","username":"A. Church "}
 %7B%22sessionid%22%3A123%2C%22username%22%3A%22A.%20Church%20%22%7D
 -schauen warum js nicht ganz geladen wird bzw. header nicht setzbar
+	=>weil weil es vorher abgefangen wurde und jetzt wird der express.static einen großteil übernehmen
+-datacontroller und filedata are the same	
 
 protect logout?
 -iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist

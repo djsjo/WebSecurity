@@ -621,6 +621,7 @@ function atHomeHandler(req, res) {
 
 }
 
+//checks for valid cookies and storres them in the session
 function sessionMiddleware(req, res, next) {
     // if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
     //     //reqNew={};
@@ -636,22 +637,30 @@ function sessionMiddleware(req, res, next) {
     // var cookies = cookie.parse(req.headers.cookie || '');
     let cookies = req.cookies;
     cookieName = req.cookieName;
+    /* try {
+         await externallyValidateCookie(cookies.testCookie)
+     } catch {
+         throw new Error('Invalid cookies')
+     }*/
+    try {
+        if (Object.entries(cookies).length !== 0) {
+            cookieAsJson = JSON.parse(cookies[cookieName]);
 
-    if (Object.entries(cookies).length !== 0) {
-        cookieAsJson = JSON.parse(cookies[cookieName]);
+            if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+                res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
+                    maxAge: -1  // invalidate
+                }));
 
-        if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
-            res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
-                maxAge: -1  // invalidate
-            }));
+                // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+                // res.end();
 
-            // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-            // res.end();
-
-            //return false;
-        } else {
-            req.session = cookieAsJson;
+                //return false;
+            } else {
+                req.session = cookieAsJson;
+            }
         }
+    } catch (e) {
+        throw new Error('Invalid cookies');
     }
 
     next();
@@ -1105,7 +1114,35 @@ var server = https.createServer(options, app);
 router.use(cookieParser());
 app.use(logStuff);
 // app.use("(*.js*)|(*.html*)|(*.css*)",express.static('Public'));
-app.use(express.static('Public',{index: false}));
+app.post('/signin', express.json(), async (req, res) => {
+    req.cookieName = "squeak-session";
+    //if there is a nonenmpty body and username, password
+    if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
+
+        //if user ist authenticated:set cookie, session and send json with true
+        //else false
+        if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
+            //set cookie
+            let cookieId = cookieHandler(req.cookieName, true, false, false);
+            req.session = {"sessionid": cookieId, "username": req.body.username};
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
+            /*res.setHeader('Set-Cookie', cookie.serialize(req.cookieName, JSON.stringify(req.session), {
+                maxAge: (60 * 30)// invalidate
+            }));*/
+            //set session
+
+            //res.writeHead(302, {"Location": "https://" + req.headers['host']})
+            res.json(true);
+        } else {
+            res.json(false);
+            // res.status(404).send('Sorry, we cannot find that!')
+        }
+
+    }else{
+        res.status(404).send('Sorry, something went wrong!')
+    }
+});
+app.use(express.static('Public', {index: false}));
 router.use((req, res, next) => {
     req.cookieName = "squeak-session";
     /*res.setHeader('Set-Cookie', cookie.serialize('squeak-session', JSON.stringify({
@@ -1118,9 +1155,8 @@ router.use((req, res, next) => {
     next();
 }, sessionMiddleware, async (req, res, next) => {
     //if session valid serve static file
-    test = req.session;
     if (typeof (req.session) !== 'undefined') {
-        res.send( await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
+        res.send(await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
     } else {
         res.send(await getFileData(__dirname + "/templates" + "/squeakSignup.template", true));
 
@@ -1166,6 +1202,11 @@ router.use((req, res, next) => {
 })*/
 // app.use(express.static("Public"));
 app.use('/', router);
+// error handler
+app.use((err, req, res, next) => {
+    res.status(400).send(err.message)
+    console.log(err);
+})
 //app.use(express.static('Public'));
 
 /*app.use('/', (req, res) => {
@@ -1187,3 +1228,4 @@ app.use('/', router);
 const deleteIntervall = 1000 * 60 * 30;
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 server.listen(8000);
+
