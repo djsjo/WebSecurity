@@ -5,6 +5,11 @@ var cookie = require('cookie');
 //const {url} = require('inspector');
 const path = require('path');
 const url = require('url');
+const express = require('express');
+const app = express();
+const port = 8000;
+const router = express.Router();
+var cookieParser = require('cookie-parser');
 const {
     getHashes
 } = require('crypto');
@@ -25,10 +30,10 @@ let roomData = {
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
 let validcookies = {
-    'athome-session': {}
+    'athome-session': {},
+    'squeak-session': {123: 123}
 };
 let currentCookieCount = 1;
-
 
 
 function deleteOldCookies(keepAliveTime) {
@@ -185,6 +190,7 @@ function route(req, res) {
     } else {
         staticServerHandler(req, res);
     }
+    //next();
 }
 
 function checkAllowedType(req, res) {
@@ -363,7 +369,7 @@ function staticServerHandler(req, res) {
     }
 }
 
-function logStuff(req, res) {
+function logStuff(req, res, next) {
     console.log("method: " + req.method + "" +
         "url:" + req.url + " " +
         "content-type: " + req.headers["content-type"] + " " +
@@ -383,6 +389,58 @@ function logStuff(req, res) {
         console.log("fileending: " + "unvalid");
         res.writeHead(404);
         res.end("404 Eror");
+    } finally {
+        next();
+    }
+}
+
+function getFileData(filepath, sync = true) {
+    let desiredPath = filepath;
+    if (fs.existsSync(desiredPath)) {
+        console.log("before readfile in getFileData");
+
+        //is not a directory it has to be a file or something similar
+        if (sync) {
+            console.log("im doing something in getFileData");
+            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
+
+        } else {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something in getFileData");
+                if (err) {
+                    // res.writeHead(404);
+                    // res.end(JSON.stringify(err));
+                    return;
+                }
+                // data = data.replace("{{method}}", method.toString());
+                // data = data.replace("{{path}}", path1.toString());
+                //
+                // if (query !== null) {
+                //     data = data.replace("{{query}}", query.toString());
+                //     queryTable = "";
+                //     queryTable += "<table>" +
+                //         "<tr>" +
+                //         "<th>Variable</th>" +
+                //         "<th>Value</th>" +
+                //         "</tr>";
+                //     for (i = 0; i < allKeys.length; i++) {
+                //         queryTable += '<tr><td>' + allKeys[i]
+                //             + '</td>' +
+                //             `<td>${allValues[i]}</td>` + '</tr>'
+                //         //res.write(data[i]+"<br>");
+                //     }
+                //     queryTable += "</table>";
+                //
+                //     data = data.replace("{{queries}}", queryTable.toString())
+                // }
+                // res.writeHead(200, {'Content-Type': 'text/html'});
+                // res.end(data);
+                return data;
+            });
+        }
+
+        console.log("after readfile in getFileData")
+
     }
 }
 
@@ -556,6 +614,192 @@ function atHomeHandler(req, res) {
             return;
         }
     }
+
+// read as string
+
+//
+
+}
+
+function sessionMiddleware(req, res, next) {
+    // if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
+    //     //reqNew={};
+    //     //console.log(typeof(req));
+    //     //resNew={};
+    //     // Object.assign(reqNew,req);
+    //     // Object.assign(resNew,res);
+    //     req.url = req.url.replace("/information", "/Public");
+    //     //reqNew.url="/Public"+reqNew.url;
+    //     staticServerHandler(req, res);
+    //     return;
+    // }
+    // var cookies = cookie.parse(req.headers.cookie || '');
+    let cookies = req.cookies;
+    cookieName = req.cookieName;
+
+    if (Object.entries(cookies).length !== 0) {
+        cookieAsJson = JSON.parse(cookies[cookieName]);
+
+        if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+            res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
+                maxAge: -1  // invalidate
+            }));
+
+            // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            // res.end();
+
+            //return false;
+        } else {
+            req.session = cookieAsJson;
+        }
+    }
+
+    next();
+
+// reqUrl = new URL(req.url, 'https://' + req.headers.host);
+// var url_parts = url.parse(req.url, true);
+//
+// method = req.method;
+// path1 = decodeURIComponent(url_parts.pathname);
+// query = url_parts.search;
+// // "url:" + req.url + " " +
+// // "content-type: " + req.headers["content-type"] + " " +
+// // "httpVersion: " + req.httpVersion + " " +
+// // "dirName: " + __dirname + ' ');
+// allKeysUnencoded = Object.keys(url_parts.query);
+// allValuesUnencoded = Object.values(url_parts.query);
+// // allKeys=allKeysUnencoded;
+// // allValues=allValuesUnencoded;
+// allKeys = [];
+// allValues = [];
+// for (i = 0; i < allKeysUnencoded.length; i++) {
+//     allKeys[i] = encodeData(allKeysUnencoded[i]);
+//     allValues[i] = encodeData(allValuesUnencoded[i]);
+//
+//     //res.write(data[i]+"<br>");
+// }
+//
+// /* replace {{method}} with the request method
+//  replace {{path}} with the request path
+//  replace {{query}} with the query string
+//  replace {{queries}} with a sequence of two column table rows, one for each query parameter.
+//
+//  */
+// //the case if the css etc is asked for
+// getRoutingTable = {
+//     '/livingroom/temperature': function () {
+//         return roomData.livingroom.temperature;
+//     },
+//     '/kitchen/temperature': function () {
+//         return roomData.kitchen.temperature;
+//     },
+//     '/bedroom/temperature': function () {
+//         return roomData.bedroom.temperature;
+//     },
+//     '/kitchen/lights/stove': function () {
+//         return roomData.kitchen.lights.stove;
+//     },
+//     '/kitchen/lights/ceiling': function () {
+//         return roomData.kitchen.lights.ceiling;
+//     },
+//     '/livingroom/lights/sofa': function () {
+//         return roomData.livingroom.lights.sofa;
+//     },
+//     '/livingroom/lights/ceiling': function () {
+//         return roomData.livingroom.lights.ceiling;
+//     },
+//     '/bedroom/lights/bed': function () {
+//         return roomData.bedroom.lights.bed;
+//     },
+//     '/bedroom/lights/ceiling': function () {
+//         return roomData.bedroom.lights.ceiling;
+//     }
+// };
+// if (pathSplit[0] == "" && path1 == "/") {
+//     let desiredPath = __dirname + "/templates" + "/atHome.template";
+//     if (fs.existsSync(desiredPath)) {
+//         console.log("before readfile in atHome");
+//
+//         //is not a directory it has to be a file or something similar
+//         fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+//             console.log("im doing something");
+//             if (err) {
+//                 res.writeHead(404);
+//                 res.end(JSON.stringify(err));
+//                 return;
+//             }
+//             // data = data.replace("{{method}}", method.toString());
+//             // data = data.replace("{{path}}", path1.toString());
+//             //
+//             // if (query !== null) {
+//             //     data = data.replace("{{query}}", query.toString());
+//             //     queryTable = "";
+//             //     queryTable += "<table>" +
+//             //         "<tr>" +
+//             //         "<th>Variable</th>" +
+//             //         "<th>Value</th>" +
+//             //         "</tr>";
+//             //     for (i = 0; i < allKeys.length; i++) {
+//             //         queryTable += '<tr><td>' + allKeys[i]
+//             //             + '</td>' +
+//             //             `<td>${allValues[i]}</td>` + '</tr>'
+//             //         //res.write(data[i]+"<br>");
+//             //     }
+//             //     queryTable += "</table>";
+//             //
+//             //     data = data.replace("{{queries}}", queryTable.toString())
+//             // }
+//             res.writeHead(200, {'Content-Type': 'text/html'});
+//             res.end(data);
+//         });
+//
+//         console.log("after readfile in atHome")
+//
+//     }
+// } else if (method == "GET") {
+//     try {
+//         res.writeHead(200, {'Content-Type': 'application/json'});
+//         stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+//         res.end(stringifiedValue);
+//     } catch (e) {
+//         res.writeHead(404);
+//         res.end(JSON.stringify(e));
+//         return;
+//     }
+//
+// } else if (method == "POST") {
+//     postRoutingTable = {
+//         '/kitchen/lights/stove': function () {
+//             roomData.kitchen.lights.stove = !(roomData.kitchen.lights.stove);
+//         },
+//         '/kitchen/lights/ceiling': function () {
+//             roomData.kitchen.lights.ceiling = !(roomData.kitchen.lights.ceiling);
+//         },
+//         '/livingroom/lights/sofa': function () {
+//             roomData.livingroom.lights.sofa = !(roomData.livingroom.lights.sofa);
+//         },
+//         '/livingroom/lights/ceiling': function () {
+//             roomData.livingroom.lights.ceiling = !(roomData.livingroom.lights.ceiling);
+//         },
+//         '/bedroom/lights/bed': function () {
+//             roomData.bedroom.lights.bed = !(roomData.bedroom.lights.bed);
+//         },
+//         '/bedroom/lights/ceiling': function () {
+//             roomData.bedroom.lights.ceiling = !(roomData.bedroom.lights.ceiling);
+//         }
+//     };
+//     //flip the value
+//     try {
+//         postRoutingTable[path1]();
+//         res.writeHead(200, {'Content-Type': 'application/json'});
+//         stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+//         res.end(stringifiedValue);
+//     } catch (e) {
+//         res.writeHead(404);
+//         res.end(JSON.stringify(e));
+//         return;
+//     }
+// }
 
 // read as string
 
@@ -851,33 +1095,95 @@ const options = {
     key: fs.readFileSync('cert/server.key'),
     cert: fs.readFileSync('cert/server.crt')
 };
+var server = https.createServer(options, app);
+// app.use('/login', (req, res,next) => {
+//     req.url=req.originalUrl;
+//     route(req, res);
+//     next('route');
+//
+// });
+router.use(cookieParser());
+app.use(logStuff);
+// app.use("(*.js*)|(*.html*)|(*.css*)",express.static('Public'));
+app.use(express.static('Public',{index: false}));
+router.use((req, res, next) => {
+    req.cookieName = "squeak-session";
+    /*res.setHeader('Set-Cookie', cookie.serialize('squeak-session', JSON.stringify({
+        sessionid: 123,
+        username: "A. Church "
+    }), {
+        maxAge: 60 * 30  // 30 minutes
+    }));*/
+    // res.end();
+    next();
+}, sessionMiddleware, async (req, res, next) => {
+    //if session valid serve static file
+    test = req.session;
+    if (typeof (req.session) !== 'undefined') {
+        res.send( await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
+    } else {
+        res.send(await getFileData(__dirname + "/templates" + "/squeakSignup.template", true));
 
-var server = https.createServer(options, async (req, res) => {
-    logStuff(req, res);
-
-
-    // let data = '';
-
-    // req.on('data', chunk => {
-    //     console.log(`Data chunk available: ${chunk}`)
-    //     data += chunk;
-    // })
-    // req.on('end', () => {
-    //     if (data != '') {
-    //         dataAsJson = qs.parse(data);
-    //         console.log("Bodydata: ");
-    //         for (dates in dataAsJson) {
-    //             console.log(dates+":"+dataAsJson[dates]);
-    //         }
-    //     }
-    // })
-
-
-    route(req, res);
-
-
+    }
+    //res.writeHead(200, {'Content-Type': 'text/html'});
+    //
+    //next();
 });
+
+// var server = https.createServer(options, async (req, res) => {
+//     logStuff(req, res);
+//
+//
+//     // let data = '';
+//
+//     // req.on('data', chunk => {
+//     //     console.log(`Data chunk available: ${chunk}`)
+//     //     data += chunk;
+//     // })
+//     // req.on('end', () => {
+//     //     if (data != '') {
+//     //         dataAsJson = qs.parse(data);
+//     //         console.log("Bodydata: ");
+//     //         for (dates in dataAsJson) {
+//     //             console.log(dates+":"+dataAsJson[dates]);
+//     //         }
+//     //     }
+//     // })
+//
+//
+//     route(req, res);
+//
+//
+// });
 //encryptPW("fisksoppa",100000,"","daniel",true);
+/*router.use('/user/:id', (req, res, next) => {
+    console.log('Request URL:', req.originalUrl)
+    var cookies = cookie.parse(req.headers.cookie || '');
+    next()
+}, (req, res, next) => {
+    console.log('Request Type:', req.method)
+    next()
+})*/
+// app.use(express.static("Public"));
+app.use('/', router);
+//app.use(express.static('Public'));
+
+/*app.use('/', (req, res) => {
+    req.url = req.originalUrl;
+    route(req, res);
+})*/
+//app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+//})
+
+
+// app.listen = function () {
+//     const server = https.createServer(options, this);
+//     return server.listen.apply(server, arguments)
+// }
+// server.listen(port, () => {
+//     console.log(`Example app listening on port ${port}`);
+// });
 const deleteIntervall = 1000 * 60 * 30;
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 server.listen(8000);

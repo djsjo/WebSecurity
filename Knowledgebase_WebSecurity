@@ -15,7 +15,7 @@ Aufgabe 1:
 -Exercise 3: experimenting with request methods DONE 
 -Exercise 4: content generation DONE
 -DOS
-
+________________________________________________________________________________________________________________________________________________________________________________________________
 Aufgabe 2:
 -single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
 -load information from server about lights etc. regularly
@@ -36,11 +36,15 @@ Aufgabe 2:
 	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
 	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückgesendet
 
-	
+_________________________________________________________________________________________________________________________________________________________________________________________________	
 	
 
 todo:
--iwie kann man trotzdem nach einloggen noch in / und in hauptseite ändert sich button behaviour nach refresh
+-sessionmiddlewareschreiben und cookieparser
+-serverseitig json senden mit type json usw
+{"sessionid":"c8a17f8228608dfceea391a23bcc1870","username":"A. Church "}
+%7B%22sessionid%22%3A123%2C%22username%22%3A%22A.%20Church%20%22%7D
+-schauen warum js nicht ganz geladen wird bzw. header nicht setzbar
 
 protect logout?
 -iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist
@@ -63,15 +67,17 @@ für angriffe:
 	
 
 
-
+__________________________________________________________________________________________________________________________
 
 known problems:
 
 
 mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
-
+________________________________________________________________________________________________________________________________________________
 links:
+-https server express https://medium.com/@nitinpatel_20236/how-to-create-an-https-server-on-localhost-using-express-366435d61f28
+-passing variables to express middleware https://stackoverflow.com/questions/18875292/passing-variables-to-the-next-middleware-using-next-in-express-js
 -https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
 -https://nodejs.dev/learn/nodejs-file-paths could be nice for checking out the file endings
 -https://stackoverflow.com/questions/52908212/how-to-serve-static-files-in-vanilla-nodejs/52913289
@@ -81,10 +87,10 @@ links:
 -string in list? https://stackoverflow.com/questions/2430000/determine-if-string-is-in-list-in-javascript
 -file extension https://attacomsian.com/blog/nodejs-get-file-extension
 -null check https://stackoverflow.com/questions/2422946/javascript-check-for-not-null/34817844
+-xss overview https://owasp.org/www-community/attacks/xss/
 -grep suchen https://praxistipps.chip.de/unter-linux-nach-text-in-dateien-suchen-so-gehts_28711
 -switch case https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Statements/switch
 -xss video https://www.youtube.com/watch?v=dFci82qwXA0
--xss overview https://owasp.org/www-community/attacks/xss/
 -types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
 -cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
 -testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
@@ -144,7 +150,7 @@ links:
 morgen:
 -auf /information ohne query zugreifen
 -at first i tried randomized a lot of long password or parameters
-
+___________________________________________________________________________________
 
 Stealing the password file:
 
@@ -160,7 +166,7 @@ I made an extra function and encrypted the pw with pbkdf2Sync and the salt with 
 
 Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. I fixed it by saving the needed variable specifically.
 
-
+___________________________________________________________________________________________________________
 Session hijacking:
 I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
 
@@ -174,6 +180,7 @@ As a bonus i check on the client side for the success of the xhr.If it fails and
 
 todo: password protection noch machen, session hijacking
 
+_____________________________________________________________________________________________________________________________________
 DOS attack
 i read about dos attacks and thought of the different possiblities my code could be attackable.
 -i might not thougt of every case to check for file existence or allowed filetypes. especially with the newly added routing function
@@ -185,7 +192,7 @@ i read about dos attacks and thought of the different possiblities my code could
 -the website waites for body data. what happens if the body data is to big
 - count keys of object https://stackoverflow.com/questions/126100/how-to-efficiently-count-the-number-of-keys-properties-of-an-object-in-javascrip
 
-
+_________________________________________________________________________________________________________________________________________________________
 first attacks:
 -i found out through my locks that i didnt thought of the ending .ico and its not loaded because of that
 -i generated random pairs of parameters and send them to localhost:8000/information?ab=ac etc. Started with 10 pairs and multiplied everytime times 10. Til about 10000. There i found out that the browser seems to cut the parameters at some point. I managed to send about 567 parameter pairs. but it doesnt crash the server.
@@ -194,13 +201,13 @@ first attacks:
 -through luck i found out that if i search for "localhost:8000/information" without the parameter the server crashes, becauce the the query object is null and i try to run a function on it. i fixed it by running a null check before.
 -i could also crash the server with "localhost:8000//" because that is an invalid url. I fixed it by catching the errors and return 404 answers.
 
-
+________________________________________________________________________________________________________________________________________________________________
 XSS Attack
 -I inserted the script "<script>alert('Owned');</script>" as a get parameter in "localhost:8000/inormation?search=nothing <script>alert('Owned');</script>" and the alert appeared.
 - i checked rule 0 and the only place im inserting the "untrusted" data is inside <td> elements. For rule 1 and 2 i made an specific function to encode data for the possiblities to do my own modifications in the future if neccessary. I encode explicitly all keys and values of the get parameter.
 
 
-
+________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 
 
