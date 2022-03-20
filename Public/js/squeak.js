@@ -28,6 +28,7 @@ function signup(button) {
                     }
 
                 } else {
+                    console.log("success pw and username ok");
                     location.reload();
                 }
 
@@ -68,8 +69,9 @@ function signin(button) {
 function signout(button) {
 
     button.blur();
+    console.log("signout");
 
-    $.post('signout', res => {
+    $.post('/signout', res => {
             console.log(res);
             if (res) {
                 location.reload();

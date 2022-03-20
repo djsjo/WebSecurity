@@ -126,6 +126,30 @@ async function userAuthenticated(username, passwd, req, res) {
     return pwFound;
 }
 
+function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
+    function checkUsernameFunction() {
+        passwdData = dataController("/passwd.json", true, req, res);
+        paswdAsJson = JSON.parse(passwdData);
+        usernameFound = false;
+        if (paswdAsJson[username]) {
+
+            if (Object.entries(paswdAsJson[username]).length !== 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    if (checkUsername === true) {
+        return checkUsernameFunction();
+    } else {
+        return false;
+    }
+}
+
 function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
     if (password.length >= 128) {
         return false;
@@ -140,13 +164,19 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
     console.log(keyAsHex);  // // 745e48...08d59ae'
     user = username.toString();
     if (save == true) {
+        //todo hier läuft noch was nicht
         dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
-        jsonDbObject = JSON.stringify(dbObject);
-        fs.writeFile("passwd.json", jsonDbObject, function (err) {
-            if (err) {
-                console.log(err);
+        passwdData = dataController("/passwd.json", true, "", "");
+        paswdAsJson = JSON.parse(passwdData);
+
+        if (!paswdAsJson[username]) {
+            paswdAsJson[username] = dbObject[username];
+            jsonDbObject = JSON.stringify(paswdAsJson);
+            //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+            if (fs.existsSync("passwd.json")) {
+                fs.writeFileSync("passwd.json", jsonDbObject);
             }
-        });
+        }
     }
     return keyAsHex;
 }
@@ -804,7 +834,7 @@ var server = https.createServer(options, app);
 //     next('route');
 //
 // });
-router.use(cookieParser());
+app.use(cookieParser());
 app.use(logStuff);
 // app.use("(*.js*)|(*.html*)|(*.css*)",express.static('Public'));
 app.post('/signin', express.json(), async (req, res) => {
@@ -831,6 +861,81 @@ app.post('/signin', express.json(), async (req, res) => {
     } else {
         res.status(404).send('Sorry, something went wrong!')
     }
+});
+app.post('/signup', express.json(), async (req, res) => {
+    req.cookieName = "squeak-session";
+    //if there is a nonenmpty body and username, password
+    if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
+        username = req.body.username;
+        password = req.body.password;
+        //if user ist authenticated:set cookie, session and send json with true
+        //else false
+        let validUsername = username !== undefined && username.length >= 4;
+        let validPassword = password !== undefined && password.length >= 8;
+
+        //todo maninupulate message so ich cant say both messages are wrong
+        //todo save pw in pwhandler local and inmemory and save everything including cookies etc.
+        if (validUsername) {
+            //if names already taken
+            usernameAlreadytaken = pwHandler({checkUsername: true});
+            if (usernameAlreadytaken) {
+                validUsername = false;
+                res.json({success: false, reason: "username"});
+                return;
+            }
+        } else {
+            res.json({success: false, reason: "username"});
+            return;
+        }
+        if (validPassword) {
+            let nameregex = new RegExp(username);
+            result = validPassword &= !nameregex.test(password);
+            if (result === 0) {
+                validPassword = false;
+                res.json({success: false, reason: "password"});
+            }
+        } else {
+            res.json({success: false, reason: "password"});
+        }
+        //in this case everything is allright and pw and username are ok
+        if (validPassword && validUsername) {
+            //set cookie
+            let cookieId = cookieHandler(req.cookieName, true, false, false);
+            //set session
+            req.session = {"sessionid": cookieId, "username": req.body.username};
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
+            //save pw locally and in "db"
+            pwHash = encryptPW(password, 100000, "", username, true);
+            //locally
+            passwdData = dataController("/passwd.json", true, "", "");
+            paswdAsJson = JSON.parse(passwdData);
+            req.session["db"]=paswdAsJson;
+            res.json({success: true});
+        }
+    } else {
+        res.status(404).send('Sorry, something went wrong!')
+    }
+    /* if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
+
+
+         //res.writeHead(302, {"Location": "https://" + req.headers['host']})
+         res.json(true);
+     } else {
+         res.json(false);
+         // res.status(404).send('Sorry, we cannot find that!')
+     }
+
+    }*/
+});
+app.post('/signout',(req,res)=>{
+    //invalidate the cookie
+    let cookies = req.cookies;
+    cookieName = "squeak-session";
+    cookieAsJson = JSON.parse(cookies[cookieName]);
+    logout(req,res);
+    //if cookkie as json not empty
+    res.send(true);
+
 });
 app.use(express.static('Public', {index: false}));
 router.use((req, res, next) => {

@@ -40,6 +40,8 @@ ________________________________________________________________________________
 	
 
 todo:
+-signup seems to work
+-pw file deleted
 -serverseitig json senden mit type json usw
 {"sessionid":"c8a17f8228608dfceea391a23bcc1870","username":"A. Church "}
 %7B%22sessionid%22%3A123%2C%22username%22%3A%22A.%20Church%20%22%7D
