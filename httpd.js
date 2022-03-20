@@ -835,7 +835,13 @@ var server = https.createServer(options, app);
 //
 // });
 app.use(cookieParser());
+app.use((req,res,next) => {
+    req.cookieName = "squeak-session";
+    next();
+});
+app.use(sessionMiddleware);
 app.use(logStuff);
+
 // app.use("(*.js*)|(*.html*)|(*.css*)",express.static('Public'));
 app.post('/signin', express.json(), async (req, res) => {
     req.cookieName = "squeak-session";
@@ -909,7 +915,7 @@ app.post('/signup', express.json(), async (req, res) => {
             //locally
             passwdData = dataController("/passwd.json", true, "", "");
             paswdAsJson = JSON.parse(passwdData);
-            req.session["db"]=paswdAsJson;
+            req.session["db"] = paswdAsJson;
             res.json({success: true});
         }
     } else {
@@ -927,13 +933,41 @@ app.post('/signup', express.json(), async (req, res) => {
 
     }*/
 });
-app.post('/signout',(req,res)=>{
+app.post('/signout', async (req, res) => {
     //invalidate the cookie
     let cookies = req.cookies;
     cookieName = "squeak-session";
     cookieAsJson = JSON.parse(cookies[cookieName]);
-    logout(req,res);
     //if cookkie as json not empty
+    if (typeof (req.session) !== 'undefined') {
+        //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
+        if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
+            //invalidate the client cookie
+            res.clearCookie(cookieName);
+            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));*/
+            res.writeHead(404);
+
+            //res.send();
+            //res.sendStatus(404);
+            res.send(false);
+            return;
+        } else {
+
+
+            cookieHandler(cookieName, false, true, false, req.session.sessionid);
+            //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));*/
+            res.clearCookie(cookieName);
+           // res.writeHead(302, {"Location": "/login"})
+
+            res.send(true);
+            return;
+        }
+    }
     res.send(true);
 
 });

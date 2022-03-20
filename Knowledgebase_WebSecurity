@@ -79,6 +79,7 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
+-
 -https server express https://medium.com/@nitinpatel_20236/how-to-create-an-https-server-on-localhost-using-express-366435d61f28
 -passing variables to express middleware https://stackoverflow.com/questions/18875292/passing-variables-to-the-next-middleware-using-next-in-express-js
 -https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
