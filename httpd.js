@@ -929,8 +929,6 @@ app.post('/signup', express.json(), async (req, res) => {
         let validUsername = username !== undefined && username.length >= 4;
         let validPassword = password !== undefined && password.length >= 8;
 
-        //todo maninupulate message so ich cant say both messages are wrong
-        //todo save pw in pwhandler local and inmemory and save everything including cookies etc.
         if (validUsername) {
             //if names already taken
             usernameAlreadytaken = pwHandler({checkUsername: true, req: req, res: res});
@@ -965,7 +963,7 @@ app.post('/signup', express.json(), async (req, res) => {
             //locally
             passwdData = dataController("/passwd.json", true, "", "");
             paswdAsJson = JSON.parse(passwdData);
-            req.session["db"] = paswdAsJson;
+            req.session["credentials"] = paswdAsJson;
             res.json({success: true});
         }
     } else {
