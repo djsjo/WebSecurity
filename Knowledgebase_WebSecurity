@@ -38,7 +38,10 @@ Aufgabe 2:
 
 _________________________________________________________________________________________________________________________________________________________________________________________________	
 Submission 3:
--changed a few things to keep submission2 workable.old "/" paht is now "/submission2"	
+-changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
+-made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+
+	
 
 todo:
 972 error mit json.parse
@@ -86,6 +89,7 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
+-smart strings: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
 -datetime manipulation: https://www.toptal.com/software/definitive-guide-to-datetime-manipulation
 -js current date: https://www.programiz.com/javascript/examples/display-current-date
 -js named arguments https://blog.bitsrc.io/javascript-why-named-arguments-are-better-than-positional-arguments-9b15ab3155ef

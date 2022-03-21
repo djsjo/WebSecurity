@@ -34,10 +34,10 @@ let validcookies = {
     'squeak-session': {123: 123}
 };
 
-
+//function get called regularly to delete unvalid cookies
 function deleteOldCookies(keepAliveTime) {
     currentTime = Date.now();
-    console.log(Date.now() + "hello Geek" + keepAliveTime);
+    console.log(Date.now() + "keepAliveTime" + keepAliveTime);
     for (cookieTypes in validcookies) {
         for (eachCookie in validcookies[cookieTypes]) {
             if ((currentTime - validcookies[cookieTypes][eachCookie]) >= keepAliveTime) {
@@ -49,6 +49,7 @@ function deleteOldCookies(keepAliveTime) {
 
 }
 
+//handler to verify, destroy and generate cookies
 function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
 
     if (newCookie && cookieName !== "") {
@@ -75,14 +76,14 @@ function cookieHandler(cookieName = "", newCookie = true, destroy = false, verif
     }
 }
 
-//returns the data of the file in the path as a string
+//returns the data of the file in the path as a string, path relative to directory
 function dataController(pathNameInCurrentDirectory, sync, req, res) {
     let desiredPath = __dirname + pathNameInCurrentDirectory;
     let ressourceData = "";
     if (fs.existsSync(desiredPath)) {
         console.log(`before readfile in ${pathNameInCurrentDirectory}`);
 
-        //is not a directory it has to be a file or something similar
+        //possible to choose an syncn and non sync reading
         if (!sync) {
             fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
                 console.log("im doing something");
@@ -103,6 +104,35 @@ function dataController(pathNameInCurrentDirectory, sync, req, res) {
     return ressourceData;
 }
 
+//simila to data controller path is absolute
+function getFileData(filepath, sync = true) {
+    let desiredPath = filepath;
+    if (fs.existsSync(desiredPath)) {
+        console.log("before readfile in getFileData");
+
+        //is not a directory it has to be a file or something similar
+        if (sync) {
+            console.log("im doing something in getFileData");
+            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
+
+        } else {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something in getFileData");
+                if (err) {
+                    // res.writeHead(404);
+                    // res.end(JSON.stringify(err));
+                    return;
+                }
+                return data;
+            });
+        }
+
+        console.log("after readfile in getFileData")
+
+    }
+}
+
+//small function for encoding data
 function encodeData(origData) {
     return encodeURIComponent(origData);
 
@@ -126,6 +156,7 @@ async function userAuthenticated(username, passwd, req, res) {
     return pwFound;
 }
 
+//currently only there to check if username already exists
 function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
     function checkUsernameFunction() {
         passwdData = dataController("/passwd.json", true, req, res);
@@ -150,6 +181,7 @@ function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
     }
 }
 
+//encrypts and saves pw's
 function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
     if (password.length >= 128) {
         return false;
@@ -172,7 +204,6 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
         if (!paswdAsJson[username]) {
             paswdAsJson[username] = dbObject[username];
             jsonDbObject = JSON.stringify(paswdAsJson);
-            //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
             if (fs.existsSync("passwd.json")) {
                 fs.writeFileSync("passwd.json", jsonDbObject);
             }
@@ -181,7 +212,7 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
     return keyAsHex;
 }
 
-//routing function which calls the appropriate handler
+//old routing function which calls the appropriate handler
 function route(req, res) {
     var url_parts = url.parse(req.url, true);
     path1 = decodeURIComponent(url_parts.pathname);
@@ -218,6 +249,7 @@ function route(req, res) {
     }
 }
 
+//old function used to only allow specific files. needed for older submissions
 function checkAllowedType(req, res) {
     allowedTypes = [".js", ".html", ".css"];
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
@@ -252,6 +284,7 @@ function typehandling(req, res) {
     }
 }
 
+//sometimes needed for older submissions. most of the time the express.static takes over now
 function staticServerHandler(req, res) {
     try {
         normalizedUrl = path.normalize(req.url);
@@ -372,6 +405,7 @@ function staticServerHandler(req, res) {
     }
 }
 
+//logfunction to write important informations in the console
 function logStuff(req, res, next) {
     console.log("method: " + req.method + "" +
         "url:" + req.url + " " +
@@ -397,34 +431,8 @@ function logStuff(req, res, next) {
     }
 }
 
-function getFileData(filepath, sync = true) {
-    let desiredPath = filepath;
-    if (fs.existsSync(desiredPath)) {
-        console.log("before readfile in getFileData");
 
-        //is not a directory it has to be a file or something similar
-        if (sync) {
-            console.log("im doing something in getFileData");
-            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
-
-        } else {
-            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                console.log("im doing something in getFileData");
-                if (err) {
-                    // res.writeHead(404);
-                    // res.end(JSON.stringify(err));
-                    return;
-                }
-                return data;
-            });
-        }
-
-        console.log("after readfile in getFileData")
-
-    }
-}
-
-//replace some variables with provided ones
+//replace some variables with provided ones.
 function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
     //read filedata
     let file = dataController(filePath, true, req, res);
@@ -435,7 +443,7 @@ function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
     return file;
 }
 
-//atHome handler
+//atHome handler. submission2
 function atHomeHandler(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
         req.url = req.url.replace("/information", "/Public");
@@ -569,50 +577,7 @@ function atHomeHandler(req, res) {
     }
 }
 
-
-//checks for valid cookies and storres them in the session
-function sessionMiddleware(req, res, next) {
-    // var cookies = cookie.parse(req.headers.cookie || '');
-    let cookies = req.cookies;
-    cookieName = req.cookieName;
-    /* try {
-         await externallyValidateCookie(cookies.testCookie)
-     } catch {
-         throw new Error('Invalid cookies')
-     }*/
-    try {
-        if (Object.entries(cookies).length !== 0) {
-            if (cookies[cookieName]) {
-                cookieAsJson = JSON.parse(cookies[cookieName]);
-            } else {
-                cookieAsJson = {};
-            }
-
-            if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
-                res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
-                    maxAge: -1  // invalidate
-                }));
-
-                // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-                // res.end();
-
-                //return false;
-            } else {
-                req.session = cookieAsJson;
-            }
-        }
-    } catch (e) {
-        //had to disable it because otherwise the old routing doesnt work
-        //throw new Error('Invalid cookies');
-        console.log(e);
-        //next();
-    }
-
-    next();
-
-}
-
-//information handler
+//information handler.older submission
 function information(req, res) {
     //the case if the css etc is asked for
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
@@ -677,7 +642,49 @@ function information(req, res) {
     }
 }
 
-//login handler
+//checks for valid cookies and storres them in the session
+function sessionMiddleware(req, res, next) {
+    // var cookies = cookie.parse(req.headers.cookie || '');
+    let cookies = req.cookies;
+    cookieName = req.cookieName;
+    /* try {
+         await externallyValidateCookie(cookies.testCookie)
+     } catch {
+         throw new Error('Invalid cookies')
+     }*/
+    try {
+        if (Object.entries(cookies).length !== 0) {
+            if (cookies[cookieName]) {
+                cookieAsJson = JSON.parse(cookies[cookieName]);
+            } else {
+                cookieAsJson = {};
+            }
+
+            if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+                res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
+                    maxAge: -1  // invalidate
+                }));
+
+                // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+                // res.end();
+
+                //return false;
+            } else {
+                req.session = cookieAsJson;
+            }
+        }
+    } catch (e) {
+        //had to disable it because otherwise the old routing doesnt work
+        //throw new Error('Invalid cookies');
+        console.log(e);
+        //next();
+    }
+
+    next();
+
+}
+
+//login handler.older submissions
 async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
         req.url = req.url.replace("/information", "/Public");
@@ -785,6 +792,7 @@ async function login(req, res) {
     }
 }
 
+//logout handler. older submissions
 async function logout(req, res) {
     try {
         if (req.method == "GET") {
@@ -846,6 +854,7 @@ async function logout(req, res) {
 
 }
 
+//squeak handler responsibler for saving and loading squeaks
 function squeakHandler(save = false, squeakObject = {}, load = false) {
     if (save === true) {
         squeakData = dataController("/squeaks.json", true, "", "");
@@ -873,21 +882,17 @@ const options = {
     cert: fs.readFileSync('cert/server.crt')
 };
 var server = https.createServer(options, app);
-// app.use('/login', (req, res,next) => {
-//     req.url=req.originalUrl;
-//     route(req, res);
-//     next('route');
-//
-// });
+//call cookieParser every time
 app.use(cookieParser());
+//set the needed cookiename so every function can use it
 app.use((req, res, next) => {
     req.cookieName = "squeak-session";
     next();
 });
 app.use(sessionMiddleware);
+//log for every request
 app.use(logStuff);
-
-// app.use("(*.js*)|(*.html*)|(*.css*)",express.static('Public'));
+//different paths for submission 3
 app.post('/signin', express.json(), async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
@@ -1039,7 +1044,9 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
         res.send();
     }
 })
+//serve static files from Public
 app.use(express.static('Public', {index: false}));
+//handler to keep functionality for old routes from other submissions
 app.use('/', async (req, res, next) => {
     //req.url = req.originalUrl;
     if (!await route(req, res)) {
@@ -1048,6 +1055,7 @@ app.use('/', async (req, res, next) => {
         console.log("no further handling, old route took other")
     }
 })
+//routerfunction to handler with "/" requests
 router.use(sessionMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
@@ -1099,14 +1107,7 @@ app.use((err, req, res, next) => {
 })
 
 
-// app.listen = function () {
-//     const server = https.createServer(options, this);
-//     return server.listen.apply(server, arguments)
-// }
-// server.listen(port, () => {
-//     console.log(`Example app listening on port ${port}`);
-// });
-const deleteIntervall = 1000 * 60 * 30;
+const deleteIntervall = 1000 * 60 * 0.5; //in ms
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 server.listen(8000);
 
