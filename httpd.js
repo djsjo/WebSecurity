@@ -10,6 +10,8 @@ const app = express();
 const port = 8000;
 const router = express.Router();
 var cookieParser = require('cookie-parser');
+var mustacheExpress = require('mustache-express');
+var Mustache = require('mustache');
 const {
     getHashes
 } = require('crypto');
@@ -213,7 +215,7 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
 }
 
 //old routing function which calls the appropriate handler
-function route(req, res) {
+async function route(req, res) {
     var url_parts = url.parse(req.url, true);
     path1 = decodeURIComponent(url_parts.pathname);
     pathSplit = path1.split('/');
@@ -225,7 +227,7 @@ function route(req, res) {
     }
     //show atHome application
     if (pathSplit[0] == "login") {
-        login(req, res);
+        await login(req, res);
         return true;
     } else if (pathSplit[0] == "logout") {
         logout(req, res);
@@ -511,7 +513,7 @@ function atHomeHandler(req, res) {
             return roomData.bedroom.lights.ceiling;
         }
     };
-    if (pathSplit[0] == "" && path1 == "/") {
+    if (path1 == "/submission2") {
         let desiredPath = __dirname + "/templates" + "/atHome.template";
         if (fs.existsSync(desiredPath)) {
             console.log("before readfile in atHome");
@@ -532,9 +534,10 @@ function atHomeHandler(req, res) {
 
         }
     } else if (method == "GET") {
+        path1Replace=path1.replace("submission2","");
         try {
             res.writeHead(200, {'Content-Type': 'application/json'});
-            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            stringifiedValue = JSON.stringify(getRoutingTable[path1Replace.toString()]());
             res.end(stringifiedValue);
         } catch (e) {
             res.writeHead(404);
@@ -565,9 +568,11 @@ function atHomeHandler(req, res) {
         };
         //flip the value
         try {
-            postRoutingTable[path1]();
+            path1Replace=path1.replace("submission2","");
+
+            postRoutingTable[path1Replace]();
             res.writeHead(200, {'Content-Type': 'application/json'});
-            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
+            stringifiedValue = JSON.stringify(getRoutingTable[path1Replace.toString()]());
             res.end(stringifiedValue);
         } catch (e) {
             res.writeHead(404);
@@ -753,9 +758,9 @@ async function login(req, res) {
             }
             if (await userAuthenticated(dataAsJson.username, dataAsJson.password, req, res)) {
                 res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {
-                    maxAge: 60 * 30  // 30 minutes
+                    maxAge: 60 * 30,httpOnly:true,secure:true  // 30 minutes
                 }));
-                res.writeHead(302, {"Location": "https://" + req.headers['host']})
+                res.writeHead(302, {"Location": "https://" + req.headers['host']+"/submission2"})
                 res.end("authenticated");
             } else {
                 let desiredPath = __dirname + "/templates" + "/login.template";
@@ -877,6 +882,12 @@ const options = {
     cert: fs.readFileSync('cert/server.crt')
 };
 var server = https.createServer(options, app);
+// Register '.mustache' extension with The Mustache Express
+app.engine('mustache', mustacheExpress());
+app.engine('template',mustacheExpress());
+
+app.set('view engine', 'mustache');
+app.set('views', __dirname + '/templates');
 //call cookieParser every time
 app.use(cookieParser());
 //set the needed cookiename so every function can use it
@@ -900,7 +911,7 @@ app.post('/signin', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true});
 
             //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
@@ -952,7 +963,7 @@ app.post('/signup', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true});
             //save pw locally and in "db"
             pwHash = encryptPW(password, 100000, "", username, true);
             //locally
@@ -990,9 +1001,6 @@ app.post('/signout', async (req, res) => {
             if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
                 //invalidate the client cookie
                 res.clearCookie(cookieName);
-                /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
-                maxAge: -1  // invalidate
-            }));*/
                 res.writeHead(404);
 
                 //res.send();
@@ -1075,26 +1083,31 @@ router.use(sessionMiddleware, async (req, res, next) => {
         for (squeak in squeaksReverseKeys) {
             squeak = squeaksReverseKeys[squeak];
             tileTemplateCopy = tileTemplate;
+            renderOption={};
             for (entry in squeaks[squeak]) {
-                tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
+
+                // tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
+                renderOption[entry]=squeaks[squeak][entry];
             }
+
+            tileTemplateCopy=Mustache.render(tileTemplateCopy,renderOption);
             endSqueaks += tileTemplateCopy;
         }
-        file = renderFile({
+        // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
+        res.render('squeakHomepage', {username: req.session["username"], squeakUnescaped: endSqueaks})
+        //old way
+        /*file = renderFile({
             filePath: "/templates/squeakHomepage.template",
             replaceVariables: {username: req.session["username"], squeaks: endSqueaks},
             req: req,
             res: res
-        });
+        });*/
         // res.send(await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
-        res.send(file);
+        //res.send(file);
     } else {//if not valid serve
         res.send(await getFileData(__dirname + "/templates" + "/squeakSignup.template", true));
 
     }
-    //res.writeHead(200, {'Content-Type': 'text/html'});
-    //
-    //next();
 });
 
 app.use('/', router);
