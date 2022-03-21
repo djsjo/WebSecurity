@@ -164,11 +164,11 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
     console.log(keyAsHex);  // // 745e48...08d59ae'
     user = username.toString();
     if (save == true) {
-        //todo hier läuft noch was nicht
         dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
         passwdData = dataController("/passwd.json", true, "", "");
         paswdAsJson = JSON.parse(passwdData);
 
+        //if the username doesnt yet exists
         if (!paswdAsJson[username]) {
             paswdAsJson[username] = dbObject[username];
             jsonDbObject = JSON.stringify(paswdAsJson);
@@ -195,20 +195,26 @@ function route(req, res) {
     //show atHome application
     if (pathSplit[0] == "login") {
         login(req, res);
+        return true;
     } else if (pathSplit[0] == "logout") {
         logout(req, res);
+        return true;
     }
     //show atHome application
-    else if (pathSplit[0] == "" && path1 == "/") {
+    else if (path1 == "/submission2") {
         atHomeHandler(req, res);
+        return true;
     }
     //determines if the first parameter is a known room in our smart home
     else if (rooms.includes(pathSplit[0])) {
         atHomeHandler(req, res);
+        return true;
     } else if (pathSplit[0] == 'information') {
         information(req, res);
+        return true;
     } else {
-        staticServerHandler(req, res);
+        return false;
+        //staticServerHandler(req, res);
     }
 }
 
@@ -418,6 +424,17 @@ function getFileData(filepath, sync = true) {
     }
 }
 
+//replace some variables with provided ones
+function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
+    //read filedata
+    let file = dataController(filePath, true, req, res);
+    for (variable in replaceVariables) {
+        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
+    }
+
+    return file;
+}
+
 //atHome handler
 function atHomeHandler(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
@@ -552,6 +569,7 @@ function atHomeHandler(req, res) {
     }
 }
 
+
 //checks for valid cookies and storres them in the session
 function sessionMiddleware(req, res, next) {
     // var cookies = cookie.parse(req.headers.cookie || '');
@@ -564,7 +582,11 @@ function sessionMiddleware(req, res, next) {
      }*/
     try {
         if (Object.entries(cookies).length !== 0) {
-            cookieAsJson = JSON.parse(cookies[cookieName]);
+            if (cookies[cookieName]) {
+                cookieAsJson = JSON.parse(cookies[cookieName]);
+            } else {
+                cookieAsJson = {};
+            }
 
             if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
                 res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
@@ -580,7 +602,10 @@ function sessionMiddleware(req, res, next) {
             }
         }
     } catch (e) {
-        throw new Error('Invalid cookies');
+        //had to disable it because otherwise the old routing doesnt work
+        //throw new Error('Invalid cookies');
+        console.log(e);
+        //next();
     }
 
     next();
@@ -821,6 +846,26 @@ async function logout(req, res) {
 
 }
 
+function squeakHandler(save = false, squeakObject = {}, load = false) {
+    if (save === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        squeakDatadAsJson = JSON.parse(squeakData);
+        id = randomBytes(16).toString('hex');
+        squeakDatadAsJson[id] = squeakObject;
+        squeakStringified = JSON.stringify(squeakDatadAsJson);
+        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+        if (fs.existsSync("squeaks.json")) {
+            fs.writeFileSync("squeaks.json", squeakStringified);
+
+        } else {
+            return false;
+        }
+        return true;
+    } else if (load === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        return JSON.parse(squeakData);
+    }
+}
 
 //options for https
 const options = {
@@ -835,7 +880,7 @@ var server = https.createServer(options, app);
 //
 // });
 app.use(cookieParser());
-app.use((req,res,next) => {
+app.use((req, res, next) => {
     req.cookieName = "squeak-session";
     next();
 });
@@ -883,7 +928,7 @@ app.post('/signup', express.json(), async (req, res) => {
         //todo save pw in pwhandler local and inmemory and save everything including cookies etc.
         if (validUsername) {
             //if names already taken
-            usernameAlreadytaken = pwHandler({checkUsername: true});
+            usernameAlreadytaken = pwHandler({checkUsername: true, req: req, res: res});
             if (usernameAlreadytaken) {
                 validUsername = false;
                 res.json({success: false, reason: "username"});
@@ -962,7 +1007,7 @@ app.post('/signout', async (req, res) => {
                 maxAge: -1  // invalidate
             }));*/
             res.clearCookie(cookieName);
-           // res.writeHead(302, {"Location": "/login"})
+            // res.writeHead(302, {"Location": "/login"})
 
             res.send(true);
             return;
@@ -971,22 +1016,72 @@ app.post('/signout', async (req, res) => {
     res.send(true);
 
 });
-app.use(express.static('Public', {index: false}));
-router.use((req, res, next) => {
-    req.cookieName = "squeak-session";
-    /*res.setHeader('Set-Cookie', cookie.serialize('squeak-session', JSON.stringify({
-        sessionid: 123,
-        username: "A. Church "
-    }), {
-        maxAge: 60 * 30  // 30 minutes
-    }));*/
-    // res.end();
-    next();
-}, sessionMiddleware, async (req, res, next) => {
-    //if session valid serve static file
+app.post('/squeak', express.urlencoded(), (req, res) => {
     if (typeof (req.session) !== 'undefined') {
-        res.send(await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
+        if (req.body.squeak) {
+            squeak = req.body.squeak;
+            // console.log(Date.now().toLocaleString().toString());
+            const date = new Date();
+            const dateString = date.toDateString();
+            const time = date.toLocaleTimeString();
+            // console.log(dateString+" "+time);
+            squeakObject = {username: req.session["username"], cardText: squeak, time: (dateString + " " + time)}
+            squeakHandler(true, squeakObject);
+        }
+
+        // res.send(file);
+        /* res.render('/templates/squeakHomepage.template', function (err, html) {
+             res.send(html)
+         })*/
+        res.redirect(302, '/')
+        //res.send("hallo");
     } else {
+        res.send();
+    }
+})
+app.use(express.static('Public', {index: false}));
+app.use('/', async (req, res, next) => {
+    //req.url = req.originalUrl;
+    if (!await route(req, res)) {
+        next();
+    } else {
+        console.log("no further handling, old route took other")
+    }
+})
+router.use(sessionMiddleware, async (req, res, next) => {
+    //if session valid serve the squeaks
+    if (typeof (req.session) !== 'undefined') {
+        tileTemplate = `<div class="card mb-2">
+            <div class="card-header">
+                {{username}}
+                <span class="float-right">{{time}}</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{cardText}}</p>
+            </div>
+        </div>`;
+        //load the squeaks from file
+        squeaks = squeakHandler(false, {}, true);
+        //reverse the order to display correctly on page
+        squeaksReverseKeys = Object.keys(squeaks).reverse();
+        endSqueaks = "";
+        for (squeak in squeaksReverseKeys) {
+            squeak = squeaksReverseKeys[squeak];
+            tileTemplateCopy = tileTemplate;
+            for (entry in squeaks[squeak]) {
+                tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
+            }
+            endSqueaks += tileTemplateCopy;
+        }
+        file = renderFile({
+            filePath: "/templates/squeakHomepage.template",
+            replaceVariables: {username: req.session["username"], squeaks: endSqueaks},
+            req: req,
+            res: res
+        });
+        // res.send(await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
+        res.send(file);
+    } else {//if not valid serve
         res.send(await getFileData(__dirname + "/templates" + "/squeakSignup.template", true));
 
     }
@@ -995,28 +1090,13 @@ router.use((req, res, next) => {
     //next();
 });
 
-//encryptPW("fisksoppa",100000,"","daniel",true);
-/*router.use('/user/:id', (req, res, next) => {
-    console.log('Request URL:', req.originalUrl)
-    var cookies = cookie.parse(req.headers.cookie || '');
-    next()
-}, (req, res, next) => {
-    console.log('Request Type:', req.method)
-    next()
-})*/
-// app.use(express.static("Public"));
 app.use('/', router);
+
 // error handler
 app.use((err, req, res, next) => {
     res.status(400).send(err.message)
     console.log(err);
 })
-//app.use(express.static('Public'));
-
-/*app.use('/', (req, res) => {
-    req.url = req.originalUrl;
-    route(req, res);
-})*/
 
 
 // app.listen = function () {
