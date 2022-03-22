@@ -62,6 +62,18 @@ Now everything was unescaped correctly.
 
 I also added the secure and httponly flags when i set cookies.
 
+CSRF Attack:
+First I analyzed how the "squeaking" is made by checking to which url, with whtat method and with which formdata are sent.
+url was: "https://localhost:8000/squeak"
+method was: "POST"
+and formdata was: "squeak:"csrf+test+to+check+how+the+request+is+made!"
+
+After that i used a simple html document place in the Public directory for convenience reasons and mad a small form which works with a hidden iframe.
+The value used for posting the squeak was "Click <a href='https://localhost:8000/csrfAttack.html'>here</a> to get the iPhobe X FREE!"
+
+Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000/csrfAttack.html". M. Schönfinkel posted the link (which is at least not directly clickable because of the escaping through mustache) and doesnt even know it, because the reload command was sent to the attacker website. He will only see it, once he refreshes the website.
+Next i signed in as "A. Church" and open the malicious link and posted it myself too.
+
 
 todo:
 972 error mit json.parse

