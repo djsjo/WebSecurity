@@ -75,7 +75,15 @@ Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000
 Next i signed in as "A. Church" and open the malicious link and posted it myself too.
 
 In order to protect against CSRF attacks i used sth. similiar to the "Double Submit Cookie" and set the cookies to samesite also.
-Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could 
+Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could prevent an csrf attack.
+
+As far as i understood csrf attacks are particularly dangerous when you can do things as an authenticated user like make bank transfers etc. Thats why I didnt protect the other endpoints. The damage is small.
+
+RegExp Denial of Service:
+i used as a username: "^(([a-z])+.)+[A-Z]([a-z])+$" and as a password "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!" which resulted 
+in the server multiple minutes not beeing able to handle any request. But i couldnt take it offline.
+
+As a protection I encoded the username and check every symbol of the username against a blacklist with often used regex symbols.
 
 
 todo:

