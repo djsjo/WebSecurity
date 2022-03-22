@@ -21,6 +21,9 @@ const {
 const {
     randomBytes,
 } = require('crypto');
+const {
+    createHmac
+} = require('crypto');
 
 let rooms = ["livingroom",
     "bedroom",
@@ -35,6 +38,7 @@ let validcookies = {
     'athome-session': {},
     'squeak-session': {123: 123}
 };
+let csrfTokens={}
 
 //function get called regularly to delete unvalid cookies
 function deleteOldCookies(keepAliveTime) {
@@ -212,6 +216,36 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
         }
     }
     return keyAsHex;
+}
+
+//encrypts and saves pw's
+function hmacValue(value="",secret="16516080asdfjklb") {
+    if (value!=="") {
+        let hmac = createHmac('sha256', secret);
+        hmac.update(value);
+        console.log(`hmac:generated`);
+        //console.log(hmac.digest('hex'));
+        val=hmac.digest('hex');
+
+        return val;
+    }
+}
+function csrfHandler({compare=false,generate=false,csrf="",encodedCookie="",secret="16516080asdfjklb"}={}){
+    if(compare===true&&csrf!==""&&encodedCookie!==""&&secret!==""){
+        ec=encodedCookie;
+        compareValue=hmacValue(csrf,secret);
+         return (ec===compareValue);
+    }
+
+    else if(generate===true&&secret!==""){
+        let randomToken = randomBytes(16);
+        let randomTokenHex=randomToken.toString('hex');
+        return randomTokenHex;
+    }
+    else{
+        return false;
+    }
+
 }
 
 //old routing function which calls the appropriate handler
@@ -683,7 +717,16 @@ function sessionMiddleware(req, res, next) {
     next();
 
 }
+function csrfMiddleware(req, res, next) {
+    //generate new csrf token
+    let csrfToken=csrfHandler({generate:true});
+    req.csrf=csrfToken;
+    encryptedCSRF=hmacValue(csrfToken);
+    console.log("csrf: "+csrfToken+" encrypted: "+encryptedCSRF);
 
+    res.cookie("csrfToken",encryptedCSRF , {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
+    next();
+}
 //login handler.older submissions
 async function login(req, res) {
     if ((typehandling(req, res) == "css") || (typehandling(req, res) == "js")) {
@@ -911,7 +954,7 @@ app.post('/signin', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
 
             //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
@@ -963,7 +1006,7 @@ app.post('/signup', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true});
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000),httpOnly:true,secure:true,sameSite:true});
             //save pw locally and in "db"
             pwHash = encryptPW(password, 100000, "", username, true);
             //locally
@@ -1032,6 +1075,14 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
     if (typeof (req.session) !== 'undefined') {
         if (req.body.squeak) {
             squeak = req.body.squeak;
+            let token="";
+            if(req.body.CSRFToken!==undefined) {
+                token = req.body.CSRFToken;
+            }
+            if(req.cookies["csrfToken"]&&!csrfHandler({compare:true,csrf:token,encodedCookie:req.cookies["csrfToken"]})){
+                res.status(404).send('Invalid CSRF!');
+                return;
+            }
             // console.log(Date.now().toLocaleString().toString());
             const date = new Date();
             const dateString = date.toDateString();
@@ -1063,7 +1114,7 @@ app.use('/', async (req, res, next) => {
     }
 })
 //routerfunction to handler with "/" requests
-router.use(sessionMiddleware, async (req, res, next) => {
+router.use(sessionMiddleware,csrfMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
         tileTemplate = `<div class="card mb-2">
@@ -1093,8 +1144,10 @@ router.use(sessionMiddleware, async (req, res, next) => {
             tileTemplateCopy=Mustache.render(tileTemplateCopy,renderOption);
             endSqueaks += tileTemplateCopy;
         }
+
+        //generate Token
         // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
-        res.render('squeakHomepage', {username: req.session["username"], squeakUnescaped: endSqueaks})
+        res.render('squeakHomepage', {username: req.session["username"], squeakUnescaped: endSqueaks,csrf_token:req.csrf})
         //old way
         /*file = renderFile({
             filePath: "/templates/squeakHomepage.template",

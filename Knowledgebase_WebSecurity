@@ -74,6 +74,9 @@ The value used for posting the squeak was "Click <a href='https://localhost:8000
 Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000/csrfAttack.html". M. Schönfinkel posted the link (which is at least not directly clickable because of the escaping through mustache) and doesnt even know it, because the reload command was sent to the attacker website. He will only see it, once he refreshes the website.
 Next i signed in as "A. Church" and open the malicious link and posted it myself too.
 
+In order to protect against CSRF attacks i used sth. similiar to the "Double Submit Cookie" and set the cookies to samesite also.
+Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could 
+
 
 todo:
 972 error mit json.parse
@@ -121,6 +124,7 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
+-csrf cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#synchronizer-token-pattern
 -smart strings: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
 -datetime manipulation: https://www.toptal.com/software/definitive-guide-to-datetime-manipulation
 -js current date: https://www.programiz.com/javascript/examples/display-current-date

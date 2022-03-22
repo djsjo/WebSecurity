@@ -4,6 +4,7 @@
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="meta-csrf-token" content="{{csrf_token}}">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="css/bootstrap.min.css">
@@ -23,13 +24,15 @@
                 <div class="input-group-text">{{username}}</div>
             </div>
             <input type="text" name="squeak" class="form-control" id="squeaktext">
-
+            <input type="hidden" name="CSRFToken" value="{{csrf_token}}">
         </div>
         <button type="submit" class="btn btn-primary mr-sm-2 ">Squeak!</button>
     </form>
 
     <form class="form-inline mt-2 mt-md-0">
+        <input type="hidden" name="CSRFToken" value="{{csrf_token}}">
         <button type="button" class="btn btn-primary" onclick="signout(this)">Sign out</button>
+
     </form>
 </div>
 
