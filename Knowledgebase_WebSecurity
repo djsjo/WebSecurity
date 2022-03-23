@@ -40,6 +40,42 @@ ________________________________________________________________________________
 Submission 3:
 -changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
 -made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+______________________________________________________________________________________________________________________________________________
+Submission 4:
+username:websecurity pw: fisksoppa
+
+
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+client.connect(err => {
+  const collection = client.db("test").collection("devices");
+  // perform actions on the collection object
+  client.close();
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_______________________________________________________________________________________________________________________
 
 Stored XSS Atack:
 The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	

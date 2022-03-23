@@ -25,6 +25,17 @@
             </div>
             <input type="text" name="squeak" class="form-control" id="squeaktext">
             <input type="hidden" name="CSRFToken" value="{{csrf_token}}">
+            <div class="input-group-append">
+
+                <select class="custom-select" name="recipient" id="recipient">
+                    <option value="all" selected>@ Everyone</option>
+                    {{&customSelectSqueakRecipient}}
+                    <option value="H. Curry">@ H. Curry</option>
+                    <option value="A. Church">@ A. Church</option>
+                    <option value="M. Schönfinkel">@ M. Schönfinkel</option>
+                    <option value="L. E. J. Brouwer">@ L. E. J. Brouwer</option>
+                </select>
+            </div>
         </div>
         <button type="submit" class="btn btn-primary mr-sm-2 ">Squeak!</button>
     </form>
@@ -38,6 +49,7 @@
 
 <div class="container">
         {{&squeakUnescaped}}
+        {{&squealUnescaped}}
 
 
 
