@@ -1,0 +1,16 @@
+CSRF Attack:
+First I analyzed how the "squeaking" is made by checking to which url, with whtat method and with which formdata are sent.
+url was: "https://localhost:8000/squeak"
+method was: "POST"
+and formdata was: "squeak:"csrf+test+to+check+how+the+request+is+made!"
+
+After that i used a simple html document place in the Public directory for convenience reasons and mad a small form which works with a hidden iframe.
+The value used for posting the squeak was "Click <a href='https://localhost:8000/csrfAttack.html'>here</a> to get the iPhobe X FREE!"
+
+Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000/csrfAttack.html". M. Schönfinkel posted the link (which is at least not directly clickable because of the escaping through mustache) and doesnt even know it, because the reload command was sent to the attacker website. He will only see it, once he refreshes the website.
+Next i signed in as "A. Church" and open the malicious link and posted it myself too.
+
+In order to protect against CSRF attacks i used sth. similiar to the "Double Submit Cookie" and set the cookies to samesite also.
+Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could prevent an csrf attack.
+
+As far as i understood csrf attacks are particularly dangerous when you can do things as an authenticated user like make bank transfers etc. Thats why I didnt protect the other endpoints. The damage is small.

