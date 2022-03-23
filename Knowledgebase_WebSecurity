@@ -132,6 +132,27 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
+.object.values: https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Object/values
+-json cookie reverse: https://wikimass.com/json/sort-reverse
+-append file: https://stackoverflow.com/questions/3459476/how-to-append-to-a-file-in-node
+-learn router in express: https://www.digitalocean.com/community/tutorials/learn-to-use-the-new-router-in-expressjs-4
+-express using middleware: https://expressjs.com/en/guide/using-middleware.html
+-nodejs crypto: https://nodejs.org/api/crypto.html#class-hmac
+-cookie parses npm: https://www.npmjs.com/package/cookie-parser
+-writing middleware in express: https://expressjs.com/en/guide/writing-middleware.html
+-server side forms validation: https://getbootstrap.com/docs/4.0/components/forms/#server-side
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-csrf prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+-mustache git: https://github.com/janl/mustache.js
+-mustache express: https://www.npmjs.com/package/mustache-express
+-good explanation: csrf
+-regex dos: https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+-http cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
+-cookie npm: https://www.npmjs.com/package/cookie
+-express route tester: http://forbeslindesay.github.io/express-route-tester/
+-path to regexp: https://www.npmjs.com/package/path-to-regexp
+-express and node: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/Introduction#creating_route_handlers
+-express route and controllers: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/routes
 -csrf cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#synchronizer-token-pattern
 -smart strings: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
 -datetime manipulation: https://www.toptal.com/software/definitive-guide-to-datetime-manipulation
@@ -186,7 +207,6 @@ links:
 -article on authentication authorization: https://docs.microsoft.com/en-us/previous-versions/tn-archive/cc512578(v=technet.10)
 -storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
 -types of attack session fixation etc https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks#session_fixation
--set cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#browser_compatibility
 -npm cookie package: https://www.npmjs.com/package/cookie
 -document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
 -document.getelementbyid: https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById
