@@ -24,6 +24,7 @@ const {
 const {
     createHmac
 } = require('crypto');
+const {MongoClient} = require("mongodb");
 
 let rooms = ["livingroom",
     "bedroom",
@@ -39,6 +40,7 @@ let validcookies = {
     'squeak-session': {123: 123}
 };
 let csrfTokens = {}
+const mongoURL = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
 //function get called regularly to delete unvalid cookies
 function deleteOldCookies(keepAliveTime) {
@@ -147,10 +149,12 @@ function encodeData(origData) {
 
 //handler function which returns if the credentials are correct
 //and the user ist authenticated
+//old legacy function
 async function userAuthenticated(username, passwd, req, res) {
     passwdData = dataController("/passwd.json", true, req, res);
     paswdAsJson = JSON.parse(passwdData);
     pwFound = false;
+    //checks if the username and password are correct
     if (paswdAsJson[username]) {
         passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
 
@@ -163,30 +167,60 @@ async function userAuthenticated(username, passwd, req, res) {
     return pwFound;
 }
 
+//new from submission 4 authenticate
+async function authenticate(username, password) {
+    let user = await credentials.findOne({
+        username: username,
+        password: password
+    });
+    return user !== null;
+}
+
+async function addUser(username, password) {
+    userExists = await credentials.findOne({'username': username});/*.toArray(/!*function(err, docs) {
+        assert.equal(err, null);
+        console.log("Found the following records");
+        console.log(docs);
+        callback(docs);
+    }*!/);*/
+    if (userExists === null) {
+        tet=await credentials.insertOne({username: username, password: password});
+        return true;
+    } else {
+        return false;
+    }
+}
+
 //currently only there to check if username already exists
 function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
-    function checkUsernameFunction() {
-        passwdData = dataController("/passwd.json", true, req, res);
-        paswdAsJson = JSON.parse(passwdData);
+    async function checkUsernameFunction() {
+        // passwdData = dataController("/passwd.json", true, req, res);
+        // paswdAsJson = JSON.parse(passwdData);
         usernameFound = false;
-        if (paswdAsJson[username]) {
+        /*if (paswdAsJson[username]) {
 
             if (Object.entries(paswdAsJson[username]).length !== 0) {
                 return true;
             } else {
                 return false;
             }
+        }*/
+        userExists = await credentials.findOne({'username': username});
+        if (userExists !== null) {
+            return true;
+        }
+        else
+            {
+                return false;
+            }
+        }
+
+        if (checkUsername === true) {
+            return checkUsernameFunction();
         } else {
             return false;
         }
     }
-
-    if (checkUsername === true) {
-        return checkUsernameFunction();
-    } else {
-        return false;
-    }
-}
 
 //encrypts and saves pw's
 function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
@@ -219,7 +253,7 @@ function encryptPW(password, iterations = 100000, salt = "", username = "", save
     return keyAsHex;
 }
 
-//encrypts and saves pw's
+//encrypts pw
 function hmacValue(value = "", secret = "16516080asdfjklb") {
     if (value !== "") {
         let hmac = createHmac('sha256', secret);
@@ -951,7 +985,7 @@ const options = {
     key: fs.readFileSync('cert/server.key'),
     cert: fs.readFileSync('cert/server.crt')
 };
-var server = https.createServer(options, app);
+/*var server = https.createServer(options, app);*/
 // Register '.mustache' extension with The Mustache Express
 app.engine('mustache', mustacheExpress());
 app.engine('template', mustacheExpress());
@@ -976,7 +1010,8 @@ app.post('/signin', express.json(), async (req, res) => {
 
         //if user ist authenticated:set cookie, session and send json with true
         //else false
-        if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
+        // if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
+        if (await authenticate(req.body.username, req.body.password)) {
             //set cookie
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
@@ -1039,7 +1074,7 @@ app.post('/signup', express.json(), async (req, res) => {
                 return;
             }
             //if names already taken
-            usernameAlreadytaken = pwHandler({checkUsername: true, req: req, res: res});
+            usernameAlreadytaken = await pwHandler({checkUsername: true, req: req, res: res});
             if (usernameAlreadytaken) {
                 validUsername = false;
                 res.json({success: false, reason: "username"});
@@ -1065,12 +1100,12 @@ app.post('/signup', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            if (req.session["sessionid"]) {
+            if (req.session["sessionid"]) { //session id was set
                 //generate csrf token
                 let csrfToken = csrfHandler({generate: true});
                 req.csrf = csrfToken;
                 csrfHandler({csrf: csrfToken, save: true, sessionid: req.session["sessionid"]});
-            } else {
+            } else { //now session id was set
                 res.json(false);
                 return;
             }
@@ -1081,11 +1116,17 @@ app.post('/signup', express.json(), async (req, res) => {
                 sameSite: true
             });
             //save pw locally and in "db"
-            pwHash = encryptPW(password, 100000, "", username, true);
+            //pwHash = encryptPW(password, 100000, "", username, true);
             //locally
-            passwdData = dataController("/passwd.json", true, "", "");
-            paswdAsJson = JSON.parse(passwdData);
-            req.session["credentials"] = paswdAsJson;
+            //passwdData = dataController("/passwd.json", true, "", "");
+            //paswdAsJson = JSON.parse(passwdData);
+            //put in the passord and username if dont exist already
+            if(!await addUser(username,password)){
+                req.session["credentials"] = {"username":username,"password":password};
+                res.json({success: false});
+                return
+
+            }
             res.json({success: true});
         }
     } else {
@@ -1162,7 +1203,7 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
                 return;
             }*/
             //way with synchronize token pattern
-            if(!(req.session.sessionid&&csrfTokens[req.session.sessionid]&&(csrfTokens[req.session.sessionid]===token))){
+            if (!(req.session.sessionid && csrfTokens[req.session.sessionid] && (csrfTokens[req.session.sessionid] === token))) {
                 res.status(404).send('Invalid CSRF!');
                 return;
             }
@@ -1268,7 +1309,7 @@ const deleteIntervall = 1000 * 60 * 30; //in ms
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 //make server connection
 /*const {MongoClient, ServerApiVersion} = require('mongodb');
-const uri = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+
 const client = new MongoClient(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -1317,6 +1358,24 @@ async function run() {
     }
 
 }*/
+MongoClient.connect(mongoURL)
+    .then(async (cluster) => {
+            mongoCluster = cluster;
 
-server.listen(8000);
+            let db = cluster.db('Squeak!');
+            squeaks = db.collection('squeaks');
+            credentials = db.collection('credentials');
+            sessions = db.collection('sessions');
+            //tet = await addUser("testUssser","testPw");
+
+            let server = https.createServer(options, app);
+            server.listen(8000);
+           // cluster.close();
+        }
+    ).catch((error) => {
+        console.log(error);
+
+    }
+);
+//server.listen(8000);
 
