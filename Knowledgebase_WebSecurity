@@ -178,7 +178,7 @@ links:
 -writing middleware in express: https://expressjs.com/en/guide/writing-middleware.html
 -server side forms validation: https://getbootstrap.com/docs/4.0/components/forms/#server-side
 -document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
--csrf prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+-xss prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
 -mustache git: https://github.com/janl/mustache.js
 -mustache express: https://www.npmjs.com/package/mustache-express
 -good explanation: csrf

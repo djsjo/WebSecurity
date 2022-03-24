@@ -48,6 +48,7 @@ function deleteOldCookies(keepAliveTime) {
         for (eachCookie in validcookies[cookieTypes]) {
             if ((currentTime - validcookies[cookieTypes][eachCookie]) >= keepAliveTime) {
                 delete validcookies[cookieTypes][eachCookie];
+                delete csrfTokens[eachCookie];
             }
         }
     }
@@ -231,14 +232,33 @@ function hmacValue(value = "", secret = "16516080asdfjklb") {
     }
 }
 
+/**
+ * @param sessionid
+ */
 function csrfHandler({
                          compare = false,
                          generate = false,
                          csrf = "",
                          encodedCookie = "",
-                         secret = "16516080asdfjklb"
+                         secret = "16516080asdfjklb",
+                         save = false,
+                         sessionid = ""
                      } = {}) {
-    if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
+    //for the normal synchronize token pattern
+    if (save === true && csrf !== "" && sessionid !== "") {
+        csrfTokens[sessionid] = csrf;
+        console.log(`saved token ${csrf}to cookie ${sessionid}`);
+        return true;
+    }
+
+//if the double submit cookie solution is used we compare the csrf token with the encrypted one from the cookie
+    else if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
+        ec = encodedCookie;
+        compareValue = hmacValue(csrf, secret);
+        return (ec === compareValue);
+    }
+//the case for the non double submit cookie solution
+    else if (compare === true && csrf !== "" && encodedCookie === "" && secret !== "") {
         ec = encodedCookie;
         compareValue = hmacValue(csrf, secret);
         return (ec === compareValue);
@@ -722,14 +742,15 @@ function sessionMiddleware(req, res, next) {
 
 }
 
+//has currently no function anymore
 function csrfMiddleware(req, res, next) {
     //generate new csrf token
-    let csrfToken = csrfHandler({generate: true});
-    req.csrf = csrfToken;
-    encryptedCSRF = hmacValue(csrfToken);
-    console.log("csrf: " + csrfToken + " encrypted: " + encryptedCSRF);
+    /*let csrfToken = csrfHandler({generate: true});
+    req.csrf = csrfToken;*/
+    //encryptedCSRF = hmacValue(csrfToken);
+    console.log("csrf: " + csrfToken);//+ " encrypted: " + encryptedCSRF);
 
-    res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
+    //res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
     next();
 }
 
@@ -960,12 +981,23 @@ app.post('/signin', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
+
+            if (req.session["sessionid"]) {
+                //generate csrf token
+                let csrfToken = csrfHandler({generate: true});
+                req.csrf = csrfToken;
+                csrfHandler({csrf: csrfToken, save: true, sessionid: req.session["sessionid"]});
+            } else {
+                res.json(false);
+                return;
+            }
             res.cookie(req.cookieName, JSON.stringify(req.session), {
                 maxAge: (60 * 30 * 1000),
                 httpOnly: true,
                 secure: true,
                 sameSite: true
             });
+
 
             //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
@@ -985,7 +1017,7 @@ app.post('/signup', express.json(), async (req, res) => {
         function checkUnallowedSigns(text) {
             unallowedSigns = ["[", "]", "+", "*", "^", "(", ")"];
             for (sign in text) {
-                signChar=text[sign];
+                signChar = text[sign];
                 if (unallowedSigns.includes(signChar)) {
                     return true;
                 }
@@ -1001,7 +1033,7 @@ app.post('/signup', express.json(), async (req, res) => {
         let validPassword = password !== undefined && password.length >= 8;
 
         if (validUsername) {
-            username=encodeData(username);
+            username = encodeData(username);
             if (checkUnallowedSigns(username)) {
                 res.json({success: false, reason: "username"});
                 return;
@@ -1033,6 +1065,15 @@ app.post('/signup', express.json(), async (req, res) => {
             let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
+            if (req.session["sessionid"]) {
+                //generate csrf token
+                let csrfToken = csrfHandler({generate: true});
+                req.csrf = csrfToken;
+                csrfHandler({csrf: csrfToken, save: true, sessionid: req.session["sessionid"]});
+            } else {
+                res.json(false);
+                return;
+            }
             res.cookie(req.cookieName, JSON.stringify(req.session), {
                 maxAge: (60 * 30 * 1000),
                 httpOnly: true,
@@ -1111,11 +1152,17 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
             if (req.body.CSRFToken !== undefined) {
                 token = req.body.CSRFToken;
             }
-            if (req.cookies["csrfToken"] && !csrfHandler({
+            //old way with double submit cookie
+            /*if (req.cookies["csrfToken"] && !csrfHandler({
                 compare: true,
                 csrf: token,
                 encodedCookie: req.cookies["csrfToken"]
             })) {
+                res.status(404).send('Invalid CSRF!');
+                return;
+            }*/
+            //way with synchronize token pattern
+            if(!(req.session.sessionid&&csrfTokens[req.session.sessionid]&&(csrfTokens[req.session.sessionid]===token))){
                 res.status(404).send('Invalid CSRF!');
                 return;
             }
@@ -1150,7 +1197,7 @@ app.use('/', async (req, res, next) => {
     }
 })
 //routerfunction to handler with "/" requests
-router.use(sessionMiddleware, csrfMiddleware, async (req, res, next) => {
+router.use(sessionMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
         tileTemplate = `<div class="card mb-2">
@@ -1164,9 +1211,10 @@ router.use(sessionMiddleware, csrfMiddleware, async (req, res, next) => {
         </div>`;
         //load the squeaks from file
         squeaks = squeakHandler(false, {}, true);
-        //reverse the order to display correctly on page
+        //reverse the order of the squeaks to display correctly on page
         squeaksReverseKeys = Object.keys(squeaks).reverse();
         endSqueaks = "";
+        //for every squeak the tile has to be generated
         for (squeak in squeaksReverseKeys) {
             squeak = squeaksReverseKeys[squeak];
             tileTemplateCopy = tileTemplate;
@@ -1183,11 +1231,15 @@ router.use(sessionMiddleware, csrfMiddleware, async (req, res, next) => {
 
         //generate Token
         // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
-        res.render('squeakHomepage', {
+        let options = {
             username: req.session["username"],
             squeakUnescaped: endSqueaks,
-            csrf_token: req.csrf
-        })
+            // csrf_token: req.csrf
+        };
+        if (csrfTokens[req.session.sessionid]) {
+            options["csrf_token"] = csrfTokens[req.session.sessionid];
+        }
+        res.render('squeakHomepage', options)
         //old way
         /*file = renderFile({
             filePath: "/templates/squeakHomepage.template",
@@ -1212,7 +1264,59 @@ app.use((err, req, res, next) => {
 })
 
 
-const deleteIntervall = 1000 * 60 * 30; //in ms
+const deleteIntervall = 1000 * 60 * 1; //in ms
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
+//make server connection
+/*const {MongoClient, ServerApiVersion} = require('mongodb');
+const uri = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const client = new MongoClient(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverApi: ServerApiVersion.v1
+});
+const dbName = "test";
+const db = client.db(dbName);
+async function run() {
+
+    try {
+        await client.connect();
+        console.log("Connected correctly to server");
+        // Use the collection "people"
+
+        const col = db.collection("people");
+
+        // Construct a document
+
+        let personDocument = {
+
+            "name": {"first": "Alan", "last": "Turing"},
+
+            "birth": new Date(1912, 5, 23), // May 23, 1912
+
+            "death": new Date(1954, 5, 7),  // May 7, 1954
+
+            "contribs": ["Turing machine", "Turing test", "Turingery"],
+
+            "views": 1250000
+
+        }
+
+        // Insert a single document, wait for promise so we can read it back
+
+        const p = await col.insertOne(personDocument);
+
+        // Find one document
+
+        const myDoc = await col.findOne();
+
+        // Print to the console
+
+        console.log(myDoc);
+    } catch (err) {
+        console.log(err.stack);
+    }
+
+}*/
+
 server.listen(8000);
 
