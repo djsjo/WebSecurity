@@ -1264,7 +1264,7 @@ app.use((err, req, res, next) => {
 })
 
 
-const deleteIntervall = 1000 * 60 * 1; //in ms
+const deleteIntervall = 1000 * 60 * 30; //in ms
 setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
 //make server connection
 /*const {MongoClient, ServerApiVersion} = require('mongodb');
