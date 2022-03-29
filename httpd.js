@@ -35,23 +35,23 @@ let roomData = {
     livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
-let validcookies = {
+/*let validcookies = {
     'athome-session': {},
     'squeak-session': {123: 123}
-};
+};*/
 let csrfTokens = {}
 const mongoURL = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
 //function get called regularly to delete unvalid cookies
-function deleteOldCookies(keepAliveTime) {
+async function deleteOldCookies(keepAliveTime) {
     currentTime = Date.now();
     console.log(Date.now() + "keepAliveTime" + keepAliveTime);
-    for (cookieTypes in validcookies) {
-        for (eachCookie in validcookies[cookieTypes]) {
-            if ((currentTime - validcookies[cookieTypes][eachCookie]) >= keepAliveTime) {
-                delete validcookies[cookieTypes][eachCookie];
-                delete csrfTokens[eachCookie];
-            }
+    validcookies = await sessions.find({}).toArray();
+    for (cookie in validcookies) {
+        cookie = validcookies[cookie];
+        if ((currentTime - cookie["date"]) >= keepAliveTime) {
+            invalidateSession(cookie['id']);
+            delete csrfTokens[cookie['id']];
         }
     }
 
@@ -170,7 +170,7 @@ async function userAuthenticated(username, passwd, req, res) {
 //new from submission 4 authenticate
 async function authenticate(username, password) {
     let user = await credentials.findOne({
-        username: username,
+        username: encodeData(username),
         password: password
     });
     return user !== null;
@@ -184,11 +184,51 @@ async function addUser(username, password) {
         callback(docs);
     }*!/);*/
     if (userExists === null) {
-        tet=await credentials.insertOne({username: username, password: password});
+        await credentials.insertOne({username: username, password: password});
         return true;
     } else {
         return false;
     }
+}
+
+//responsible for finding the session
+async function findSession(sessionid) {
+    test = await sessions.findOne({id: sessionid});
+    return test;
+}
+
+async function newSession() {
+    let sessionid = randomBytes(64).toString('hex');
+    test = await sessions.insertOne({id: sessionid, 'date': Date.now()});
+    return sessionid;
+}
+
+async function invalidateSession(sessionid) {
+    test = await sessions.findOneAndDelete({id: sessionid});
+    return test;
+}
+
+async function addSqueak(username, recipient, squeak) {
+    let options = {weekday: 'short', hour: 'numeric', minute: 'numeric'};
+    let time = new Date().toLocaleDateString('sv-SE', options);
+    await squeaks.insertOne({
+        name: username,
+        time: time,
+        recipient: recipient,
+        squeak: squeak
+    });
+}
+
+async function getSqueaks(recipient) {
+    recipient = encodeData(recipient);
+    testSqueak = await squeaks.find({recipient: recipient}).toArray();
+    return testSqueak;
+}
+
+async function getUsers() {
+    // Data.find({}).project({ _id : 1, serialno : 1 }).toArray()
+    testUser = await credentials.find().project({"username": 1, _id: 0}).toArray();
+    return testUser;
 }
 
 //currently only there to check if username already exists
@@ -208,19 +248,17 @@ function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
         userExists = await credentials.findOne({'username': username});
         if (userExists !== null) {
             return true;
-        }
-        else
-            {
-                return false;
-            }
-        }
-
-        if (checkUsername === true) {
-            return checkUsernameFunction();
         } else {
             return false;
         }
     }
+
+    if (checkUsername === true) {
+        return checkUsernameFunction();
+    } else {
+        return false;
+    }
+}
 
 //encrypts and saves pw's
 function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
@@ -740,7 +778,7 @@ function information(req, res) {
 }
 
 //checks for valid cookies and storres them in the session
-function sessionMiddleware(req, res, next) {
+async function sessionMiddleware(req, res, next) {
     // var cookies = cookie.parse(req.headers.cookie || '');
     let cookies = req.cookies;
     cookieName = req.cookieName;
@@ -752,7 +790,8 @@ function sessionMiddleware(req, res, next) {
                 cookieAsJson = {};
             }
 
-            if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+            // if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+            if (!await findSession(cookieAsJson["sessionid"])) {
                 res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
                     maxAge: -1  // invalidate
                 }));
@@ -1013,7 +1052,10 @@ app.post('/signin', express.json(), async (req, res) => {
         // if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
         if (await authenticate(req.body.username, req.body.password)) {
             //set cookie
-            let cookieId = cookieHandler(req.cookieName, true, false, false);
+            let cookieId = await newSession();
+            //save the cookie
+
+            //cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
 
@@ -1097,7 +1139,8 @@ app.post('/signup', express.json(), async (req, res) => {
         //in this case everything is allright and pw and username are ok
         if (validPassword && validUsername) {
             //set cookie
-            let cookieId = cookieHandler(req.cookieName, true, false, false);
+            let cookieId = await newSession();
+            //cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
             if (req.session["sessionid"]) { //session id was set
@@ -1121,12 +1164,12 @@ app.post('/signup', express.json(), async (req, res) => {
             //passwdData = dataController("/passwd.json", true, "", "");
             //paswdAsJson = JSON.parse(passwdData);
             //put in the passord and username if dont exist already
-            if(!await addUser(username,password)){
-                req.session["credentials"] = {"username":username,"password":password};
+            if (!await addUser(username, password)) {
                 res.json({success: false});
                 return
-
             }
+
+            req.session["credentials"] = {"username": username, "password": password};
             res.json({success: true});
         }
     } else {
@@ -1155,19 +1198,19 @@ app.post('/signout', async (req, res) => {
         //if cookkie as json not empty
         if (typeof (req.session) !== 'undefined') {
             //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
-            if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
+            // if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
+            if (!await findSession(req.session.sessionid)) {
                 //invalidate the client cookie
                 res.clearCookie(cookieName);
                 res.writeHead(404);
-
-                //res.send();
-                //res.sendStatus(404);
                 res.send(false);
                 return;
             } else {
 
 
-                cookieHandler(cookieName, false, true, false, req.session.sessionid);
+                //cookieHandler(cookieName, false, true, false, req.session.sessionid);
+                //destroy the cookie
+                await invalidateSession(req.session.sessionid);
                 //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
                 /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
                 maxAge: -1  // invalidate
@@ -1204,6 +1247,10 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
             }*/
             //way with synchronize token pattern
             if (!(req.session.sessionid && csrfTokens[req.session.sessionid] && (csrfTokens[req.session.sessionid] === token))) {
+                if (req.session.sessionid) {
+                    invalidateSession(req.session.sessionid);
+                }
+                res.clearCookie(cookieName);
                 res.status(404).send('Invalid CSRF!');
                 return;
             }
@@ -1212,8 +1259,11 @@ app.post('/squeak', express.urlencoded(), (req, res) => {
             const dateString = date.toDateString();
             const time = date.toLocaleTimeString();
             // console.log(dateString+" "+time);
-            squeakObject = {username: req.session["username"], cardText: squeak, time: (dateString + " " + time)}
-            squeakHandler(true, squeakObject);
+            //old way
+            /* squeakObject = {username: req.session["username"], cardText: squeak, time: (dateString + " " + time)}
+             squeakHandler(true, squeakObject);*/
+            //db way
+            addSqueak(req.session["username"], req.body.recipient, req.body.squeak);
         }
 
         // res.send(file);
@@ -1237,50 +1287,68 @@ app.use('/', async (req, res, next) => {
         console.log("no further handling, old route took other")
     }
 })
+
+
 //routerfunction to handler with "/" requests
 router.use(sessionMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
-        tileTemplate = `<div class="card mb-2">
-            <div class="card-header">
-                {{username}}
-                <span class="float-right">{{time}}</span>
-            </div>
-            <div class="card-body">
-                <p class="card-text">{{cardText}}</p>
-            </div>
-        </div>`;
+        /* tileTemplate = `<div class="card mb-2">
+             <div class="card-header">
+                 {{username}}
+                 <span class="float-right">{{time}}</span>
+             </div>
+             <div class="card-body">
+                 <p class="card-text">{{cardText}}</p>
+             </div>
+         </div>`;*/
         //load the squeaks from file
-        squeaks = squeakHandler(false, {}, true);
+        //squeaks = squeakHandler(false, {}, true);
+        /* if(typeof (req.body.recipient) !== 'undefined'){
+             squeaks=getSqueaks(req.body.recipient);
+         }
+         else{
+             squeaks=getSqueaks("all");
+         }*/
         //reverse the order of the squeaks to display correctly on page
-        squeaksReverseKeys = Object.keys(squeaks).reverse();
-        endSqueaks = "";
-        //for every squeak the tile has to be generated
-        for (squeak in squeaksReverseKeys) {
-            squeak = squeaksReverseKeys[squeak];
-            tileTemplateCopy = tileTemplate;
-            renderOption = {};
-            for (entry in squeaks[squeak]) {
+        /*  squeaksReverseKeys = Object.keys(squeaks).reverse();
+          endSqueaks = "";
+          //for every squeak the tile has to be generated
+          for (squeak in squeaksReverseKeys) {
+              squeak = squeaksReverseKeys[squeak];
+              tileTemplateCopy = tileTemplate;
+              renderOption = {};
+              for (entry in squeaks[squeak]) {
 
-                // tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
-                renderOption[entry] = squeaks[squeak][entry];
-            }
+                  // tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
+                  renderOption[entry] = squeaks[squeak][entry];
+              }
 
-            tileTemplateCopy = Mustache.render(tileTemplateCopy, renderOption);
-            endSqueaks += tileTemplateCopy;
-        }
+              tileTemplateCopy = Mustache.render(tileTemplateCopy, renderOption);
+              endSqueaks += tileTemplateCopy;
+          }*/
 
         //generate Token
         // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
-        let options = {
+        /*let options = {
             username: req.session["username"],
             squeakUnescaped: endSqueaks,
             // csrf_token: req.csrf
-        };
-        if (csrfTokens[req.session.sessionid]) {
-            options["csrf_token"] = csrfTokens[req.session.sessionid];
-        }
-        res.render('squeakHomepage', options)
+        };*/
+        /* if (csrfTokens[req.session.sessionid]) {
+             options["csrf_token"] = csrfTokens[req.session.sessionid];
+         }*/
+        // res.render('squeakHomepage', options)
+        Promise.all([getUsers(), getSqueaks('all'), getSqueaks(req.session.username),]).then(
+            results => {
+                res.render('squeakHomepage', {
+                    username: req.session.username,
+                    users: results[0],
+                    squeaks: results[1].reverse(),
+                    squeals: results[2].reverse(),
+                    csrf_token: csrfTokens[req.session.sessionid]
+                });
+            });
         //old way
         /*file = renderFile({
             filePath: "/templates/squeakHomepage.template",
@@ -1305,59 +1373,8 @@ app.use((err, req, res, next) => {
 })
 
 
-const deleteIntervall = 1000 * 60 * 30; //in ms
-setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
+const deleteIntervall = 1000 * 60 * 30; //in ms =30 minutes
 //make server connection
-/*const {MongoClient, ServerApiVersion} = require('mongodb');
-
-const client = new MongoClient(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverApi: ServerApiVersion.v1
-});
-const dbName = "test";
-const db = client.db(dbName);
-async function run() {
-
-    try {
-        await client.connect();
-        console.log("Connected correctly to server");
-        // Use the collection "people"
-
-        const col = db.collection("people");
-
-        // Construct a document
-
-        let personDocument = {
-
-            "name": {"first": "Alan", "last": "Turing"},
-
-            "birth": new Date(1912, 5, 23), // May 23, 1912
-
-            "death": new Date(1954, 5, 7),  // May 7, 1954
-
-            "contribs": ["Turing machine", "Turing test", "Turingery"],
-
-            "views": 1250000
-
-        }
-
-        // Insert a single document, wait for promise so we can read it back
-
-        const p = await col.insertOne(personDocument);
-
-        // Find one document
-
-        const myDoc = await col.findOne();
-
-        // Print to the console
-
-        console.log(myDoc);
-    } catch (err) {
-        console.log(err.stack);
-    }
-
-}*/
 MongoClient.connect(mongoURL)
     .then(async (cluster) => {
             mongoCluster = cluster;
@@ -1370,7 +1387,8 @@ MongoClient.connect(mongoURL)
 
             let server = https.createServer(options, app);
             server.listen(8000);
-           // cluster.close();
+            setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
+            // cluster.close();
         }
     ).catch((error) => {
         console.log(error);

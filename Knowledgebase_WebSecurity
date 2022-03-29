@@ -55,24 +55,34 @@ client.connect(err => {
 });
 
 
+I orignally made my own cookie handlers and would have adaptem them to handle the db. But in order for you to better get my code, i just put in your functions like newSession() etc.
+
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106e32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106aae32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
 
 
 
+todo:
+when log out destroy csrf and cookie
 
+squeak-session=%7B%22sessionid%22%3A%22{"$gt": ""}%22%2C%22username%22%3A%7B%22%24gt%22%3A%22%22%7D%7D; Max-Age=1800; Path=/; Expires=Fri, 25 Mar 2022 15:30:34 GMT; HttpOnly; Secure; SameSite=Strict
 
+NoSQL injection
+I was able to bypass authentification by using the user and pw "{"$gt": ""}, sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
 
+To hijack a session i analyzed the structure of the cookie and inserted the "{'$gt':''}" where the session id is normaly: "squeak-session=%7B%22sessionid%22%3A%22{"$gt":''}}%22%2C%22username%22%3A%22daniel%22%7D" for example. But no matter what i tried, the combination of my, cookie.parser and my session handler who interprets the cookie value as json made the neccessary object always to a string which prohibited it from getting the cookie.
 
+I was able to get the session when doing it directly in my code. but didnt find a way to make it work as a "client"
 
+The same was for the credetial of a special person: when used as username { $regex: 'daniel', $options: "si" } and as password {"$gt": ""} i was able to retrieve the credentials of this person. After getting through a rest client the according cookie i was able to read all messages from the perspective of this person.
 
+If i would use salt and hash this attacks wouldn't change because the expression is only used to find the username and pw in the db.
+In order to be more protected i have to check if the found username and userpw is the same, i provided.
 
-
-
-
-
-
-
-
-
+datatype validators,Integer.parseInt() with exception, check if input 
+As a fix i made a middleware called "inputValidation". It mainly there for the username and password. I first start by checking agains a blacklist with unallowed sign which are often used for regex in order to prevent a regexdos. Then Im checking based on path different things. For example for "/signin" im checking the username against the usernames in the db.
+I also took a regexpression for valid usernames and check it for every username.
+For passwords im only checking that it hasnt some specific characters in order to prevent json and regex.
 
 
 _______________________________________________________________________________________________________________________
