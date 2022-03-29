@@ -88,6 +88,10 @@ Now im calling the middleware for signin and signup before somehting with the da
 
 As a bonus im only searching the username after encoding it.
 
+I tried to do the same attacks from before but the inputValidator could stop the request before something else happened.
+
+
+
 
 _______________________________________________________________________________________________________________________
 
