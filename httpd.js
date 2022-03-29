@@ -143,7 +143,9 @@ function getFileData(filepath, sync = true) {
 
 //small function for encoding data
 function encodeData(origData) {
-    return encodeURIComponent(origData);
+    complete= encodeURIComponent(origData);
+    complete=complete.replace(encodeURIComponent(" ")," ");
+    return complete;
 
 }
 
@@ -171,7 +173,7 @@ async function userAuthenticated(username, passwd, req, res) {
 async function authenticate(username, password) {
     let user = await credentials.findOne({
         //username: encodeData(username),
-        username: username,
+        username: encodeData(username),
         password: password
     });
     return user !== null;
@@ -588,7 +590,7 @@ async function inputValidation(req, res, next) {
                 //check against regex
                 //^(?=.{8,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$
                 //adapted from https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
-                let nameregex = new RegExp(`^(?=.{8,20}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.\{\}])$`);
+                let nameregex = new RegExp(`^(?=.{4,20}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-ZäöüÄÖÜß0-9._" "]+(?<![_.\{\}])$`);
                 result = nameregex.test(username);
                 if ([`/signin`].includes(req.path)) {
                     if (unallowedCharacters) {
@@ -633,7 +635,7 @@ async function inputValidation(req, res, next) {
                     }
 
                     //if the username is not inside the db usernames
-                    if (!(allUserArr.includes(username))) {
+                    if ((allUserArr.includes(username))) {
                         res.json({success: false, reason: "username"});
                         return;
                     }
@@ -1219,7 +1221,7 @@ app.post('/signin', express.json(), inputValidation, async (req, res) => {
         res.status(404).send('Sorry, something went wrong!')
     }
 });
-app.post('/signup', express.json(), async (req, res) => {
+app.post('/signup', express.json(),inputValidation, async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {

@@ -68,7 +68,7 @@ when log out destroy csrf and cookie
 squeak-session=%7B%22sessionid%22%3A%22{"$gt": ""}%22%2C%22username%22%3A%7B%22%24gt%22%3A%22%22%7D%7D; Max-Age=1800; Path=/; Expires=Fri, 25 Mar 2022 15:30:34 GMT; HttpOnly; Secure; SameSite=Strict
 
 NoSQL injection
-I was able to bypass authentification by using the user and pw "{"$gt": ""}, sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
+I was able to bypass authentification by using the user and pw "{"$gt": ""}", sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
 
 To hijack a session i analyzed the structure of the cookie and inserted the "{'$gt':''}" where the session id is normaly: "squeak-session=%7B%22sessionid%22%3A%22{"$gt":''}}%22%2C%22username%22%3A%22daniel%22%7D" for example. But no matter what i tried, the combination of my, cookie.parser and my session handler who interprets the cookie value as json made the neccessary object always to a string which prohibited it from getting the cookie.
 
@@ -83,6 +83,10 @@ datatype validators,Integer.parseInt() with exception, check if input
 As a fix i made a middleware called "inputValidation". It mainly there for the username and password. I first start by checking agains a blacklist with unallowed sign which are often used for regex in order to prevent a regexdos. Then Im checking based on path different things. For example for "/signin" im checking the username against the usernames in the db.
 I also took a regexpression for valid usernames and check it for every username.
 For passwords im only checking that it hasnt some specific characters in order to prevent json and regex.
+
+Now im calling the middleware for signin and signup before somehting with the data even happens.
+
+As a bonus im only searching the username after encoding it.
 
 
 _______________________________________________________________________________________________________________________
