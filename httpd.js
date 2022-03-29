@@ -170,7 +170,8 @@ async function userAuthenticated(username, passwd, req, res) {
 //new from submission 4 authenticate
 async function authenticate(username, password) {
     let user = await credentials.findOne({
-        username: encodeData(username),
+        //username: encodeData(username),
+        username: username,
         password: password
     });
     return user !== null;
@@ -563,6 +564,129 @@ function logStuff(req, res, next) {
     }
 }
 
+async function inputValidation(req, res, next) {
+    //helpfull to detect regular expressions
+    function checkUnallowedSigns(text) {
+        unallowedSigns = ["[", "]", "+", "*", "^", "(", ")"];
+        for (sign in text) {
+            signChar = text[sign];
+            if (unallowedSigns.includes(signChar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    console.log(`input validation`);
+    try {
+        if (req.body !== 'undefined') {
+            if (req.body.username !== 'undefined') {
+                username = req.body.username;
+                unallowedCharacters = checkUnallowedSigns(username);
+
+                //allowed username are only whats in the db as usernames
+                //check against regex
+                //^(?=.{8,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$
+                //adapted from https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
+                let nameregex = new RegExp(`^(?=.{8,20}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.\{\}])$`);
+                result = nameregex.test(username);
+                if ([`/signin`].includes(req.path)) {
+                    if (unallowedCharacters) {
+                       // res.json({success: false, reason: "username"});
+                        res.json(false);
+                        return;
+                    }
+                    //if its not a valid name
+                    if (result !== true) {
+                        // validPassword = false;
+                        // res.json({success: false, reason: "username"});
+                        res.json(false);
+                        return;
+                    }
+                    allUsers = await getUsers();
+                    allUserArr = [];
+                    for (user in allUsers) {
+                        allUserArr[user] = allUsers[user]['username'];
+                    }
+
+                    //if the username is not inside the db usernames
+                    if (!(allUserArr.includes(username))) {
+                        res.json(false);
+                        return;
+                    }
+                }
+                if ([`/signup`].includes(req.path)) {
+                    if (unallowedCharacters) {
+                        res.json({success: false, reason: "username"});
+                        return;
+                    }
+                    //if its not a valid name
+                    if (result !== true) {
+                        // validPassword = false;
+                        res.json({success: false, reason: "username"});
+                        return;
+                    }
+                    allUsers = await getUsers();
+                    allUserArr = [];
+                    for (user in allUsers) {
+                        allUserArr[user] = allUsers[user]['username'];
+                    }
+
+                    //if the username is not inside the db usernames
+                    if (!(allUserArr.includes(username))) {
+                        res.json({success: false, reason: "username"});
+                        return;
+                    }
+                }
+                try {
+                    req.body.username = username.toString();
+                } catch (e) {
+                    res.json({success: false, reason: "username"});
+                    return;
+                }
+            }
+            if (req.body.password !== 'undefined') {
+                password = req.body.password;
+                unallowedCharacters = checkUnallowedSigns(password);
+                let nameregex = new RegExp(`^(?=.{1,20}$)(?![{}])[a-zA-Z0-9._]+(?<![\{\}])$`);
+                result = nameregex.test(password);
+                if ([`/signin`].includes(req.path)) {
+                    if (unallowedCharacters) {
+                        res.json(false);
+                        return;
+                    }
+                    //if its not a valid name
+                    if (result !== true) {
+                        res.json(false);
+                        return;
+                    }
+                }
+                if ([`/signup`].includes(req.path)) {
+                    if (unallowedCharacters) {
+                        res.json({success: false, reason: "password"});
+                        return;
+                    }
+                    //if its not a valid name
+                    if (result !== true) {
+                        res.json({success: false, reason: "password"});
+                        return;
+                    }
+                }
+                try {
+                    req.body.password = password.toString();
+                } catch (e) {
+                    res.json({success: false, reason: "password"});
+                    return;
+                }
+            }
+        }
+        next();
+    } catch (e) {
+        console.log("Exception: "+e);
+    }
+
+
+}
 
 //replace some variables with provided ones.
 function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
@@ -785,24 +909,34 @@ async function sessionMiddleware(req, res, next) {
     try {
         if (Object.entries(cookies).length !== 0) {
             if (cookies[cookieName]) {
-                cookieAsJson = JSON.parse(cookies[cookieName]);
-            } else {
-                cookieAsJson = {};
+                cookieAsJson = JSON.parse(cookies[cookieName]/*, (key, value) => {
+                    try {
+                        if (typeof value === 'string') {
+                            JSON.parse(value);
+                        } else {
+                            return value;
+                        }
+                    } catch (e) {
+                        console.log(e);
+                    }
+                }*/);
             }
+        } else {
+            cookieAsJson = {};
+        }
 
-            // if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
-            if (!await findSession(cookieAsJson["sessionid"])) {
-                res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
-                    maxAge: -1  // invalidate
-                }));
+        // if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+        if (!await findSession(cookieAsJson["sessionid"])) {
+            res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
+                maxAge: -1  // invalidate
+            }));
 
-                // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-                // res.end();
+            // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            // res.end();
 
-                //return false;
-            } else {
-                req.session = cookieAsJson;
-            }
+            //return false;
+        } else {
+            req.session = cookieAsJson;
         }
     } catch (e) {
         //had to disable it because otherwise the old routing doesnt work
@@ -1042,7 +1176,7 @@ app.use(sessionMiddleware);
 //log for every request
 app.use(logStuff);
 //different paths for submission 3
-app.post('/signin', express.json(), async (req, res) => {
+app.post('/signin', express.json(), inputValidation, async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
@@ -1075,8 +1209,6 @@ app.post('/signin', express.json(), async (req, res) => {
                 sameSite: true
             });
 
-
-            //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
         } else {
             res.json(false);
@@ -1293,48 +1425,7 @@ app.use('/', async (req, res, next) => {
 router.use(sessionMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
-        /* tileTemplate = `<div class="card mb-2">
-             <div class="card-header">
-                 {{username}}
-                 <span class="float-right">{{time}}</span>
-             </div>
-             <div class="card-body">
-                 <p class="card-text">{{cardText}}</p>
-             </div>
-         </div>`;*/
-        //load the squeaks from file
-        //squeaks = squeakHandler(false, {}, true);
-        /* if(typeof (req.body.recipient) !== 'undefined'){
-             squeaks=getSqueaks(req.body.recipient);
-         }
-         else{
-             squeaks=getSqueaks("all");
-         }*/
-        //reverse the order of the squeaks to display correctly on page
-        /*  squeaksReverseKeys = Object.keys(squeaks).reverse();
-          endSqueaks = "";
-          //for every squeak the tile has to be generated
-          for (squeak in squeaksReverseKeys) {
-              squeak = squeaksReverseKeys[squeak];
-              tileTemplateCopy = tileTemplate;
-              renderOption = {};
-              for (entry in squeaks[squeak]) {
 
-                  // tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
-                  renderOption[entry] = squeaks[squeak][entry];
-              }
-
-              tileTemplateCopy = Mustache.render(tileTemplateCopy, renderOption);
-              endSqueaks += tileTemplateCopy;
-          }*/
-
-        //generate Token
-        // res.render('squeakHomepage.template', {username: req.session["username"], squeaks: endSqueaks})
-        /*let options = {
-            username: req.session["username"],
-            squeakUnescaped: endSqueaks,
-            // csrf_token: req.csrf
-        };*/
         /* if (csrfTokens[req.session.sessionid]) {
              options["csrf_token"] = csrfTokens[req.session.sessionid];
          }*/
@@ -1384,6 +1475,11 @@ MongoClient.connect(mongoURL)
             credentials = db.collection('credentials');
             sessions = db.collection('sessions');
             //tet = await addUser("testUssser","testPw");
+            let attack = `$gt": "`;
+            let test1 = encodeData(`{$gt:''}`);
+            let test2 = {$regex: 'daniel', $options: "si"};
+            let test = await credentials.findOne({username: test2, password: {"$gt": ""}});//{"$gt": ""}
+
 
             let server = https.createServer(options, app);
             server.listen(8000);
