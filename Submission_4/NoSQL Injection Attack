@@ -1,0 +1,25 @@
+NoSQL injection
+I was able to bypass authentification by using the user and pw "{"$gt": ""}", sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
+
+To hijack a session i analyzed the structure of the cookie and inserted the "{'$gt':''}" where the session id is normaly: "squeak-session=%7B%22sessionid%22%3A%22{"$gt":''}}%22%2C%22username%22%3A%22daniel%22%7D" for example. But no matter what i tried, the combination of my cookie.parser and my session handler who interprets the cookie value as json made the neccessary object always to a string which prohibited it from getting the cookie in the db.
+
+I was able to get the session when doing it directly in my code, but didnt find a way to make it work as a "client".
+
+For the credentials of a special person: when used as username { $regex: 'daniel', $options: "si" } and as password {"$gt": ""} i was able to retrieve the credentials of this person. After getting through a rest client the according cookie I was able to read all messages from the perspective of this person.
+
+If I would use salt and hash this attacks wouldn't change because the expression is only used to find the username and pw in the db.
+In order to be more protected I would have to check if the found username and userpw is the same I provided.
+
+To make it work I would have to add functionality to rehash the given pw and compare it to the one in the db. This way the attack json "{"$gt": ""}" would be interpreted as a String and fail to access the db.
+
+
+As a fix I made a middleware called "inputValidation". It's mainly there for the username and password. I first started by checking against a blacklist with unallowed characters which are often used for regex in order to prevent a regexdos. Then Im checking depending on path("/singin", "/signup" etc) different things. For example for "/signin" im checking the username against the known usernames in the db.
+
+I also took a regexpression for valid usernames and check it for every username.
+For passwords im only checking that it hasn't some specific characters in order to prevent json and regex.
+
+Now im calling this middleware for signin and signup before somehting with the data even happens in the actual functions.
+
+As a bonus im only searching the username after encoding it.
+
+I tried to do the same attacks from before but the inputValidator could stop the request before something else happened.

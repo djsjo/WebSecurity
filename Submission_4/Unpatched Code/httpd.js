@@ -35,313 +35,40 @@ let roomData = {
     livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
-/*let validcookies = {
-    'athome-session': {},
-    'squeak-session': {123: 123}
-};*/
 let csrfTokens = {}
 const mongoURL = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
-//function get called regularly to delete unvalid cookies
-async function deleteOldCookies(keepAliveTime) {
-    currentTime = Date.now();
-    console.log(Date.now() + "keepAliveTime" + keepAliveTime);
-    validcookies = await sessions.find({}).toArray();
-    for (cookie in validcookies) {
-        cookie = validcookies[cookie];
-        if ((currentTime - cookie["date"]) >= keepAliveTime) {
-            invalidateSession(cookie['id']);
-            delete csrfTokens[cookie['id']];
-        }
+//replace some variables with provided ones.
+function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
+    //read filedata
+    let file = dataController(filePath, true, req, res);
+    for (variable in replaceVariables) {
+        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
     }
 
-
+    return file;
 }
 
-//handler to verify, destroy and generate cookies
-function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
+//squeak handler responsible for saving and loading squeaks
+function squeakHandler(save = false, squeakObject = {}, load = false) {
+    if (save === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        squeakDatadAsJson = JSON.parse(squeakData);
+        id = randomBytes(16).toString('hex');
+        squeakDatadAsJson[id] = squeakObject;
+        squeakStringified = JSON.stringify(squeakDatadAsJson);
+        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+        if (fs.existsSync("squeaks.json")) {
+            fs.writeFileSync("squeaks.json", squeakStringified);
 
-    if (newCookie && cookieName !== "") {
-
-        cookieId = randomBytes(16).toString('hex');
-        //checks if cookieId already exists
-        if (cookieId in validcookies[cookieName]) {
-            cookieId = randomBytes(16).toString('hex');
-        }
-
-        validcookies[cookieName][cookieId] = Date.now();
-        //validcookies[cookieName].push(cookieObject);
-        return cookieId;
-
-    } else if (destroy && cookieId !== "") {
-        if (cookieId in validcookies[cookieName]) {
-            delete validcookies[cookieName][cookieId];
-        }
-    } else if (verify && cookieId !== "" && cookieName !== "") {
-        if (cookieId in validcookies[cookieName]) {
-            return true;
-        }
-        return false;
-    }
-}
-
-//returns the data of the file in the path as a string, path relative to directory
-function dataController(pathNameInCurrentDirectory, sync, req, res) {
-    let desiredPath = __dirname + pathNameInCurrentDirectory;
-    let ressourceData = "";
-    if (fs.existsSync(desiredPath)) {
-        console.log(`before readfile in ${pathNameInCurrentDirectory}`);
-
-        //possible to choose an syncn and non sync reading
-        if (!sync) {
-            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                console.log("im doing something");
-                if (err) {
-                    res.writeHead(404);
-                    res.end(JSON.stringify(err));
-                    return;
-                }
-
-                ressourceData = data;
-            });
-
-            console.log("after readfile in {{pathNameInCurrentDirectory}}")
-        } else {
-            ressourceData = fs.readFileSync(desiredPath, {encoding: "utf-8"});
-        }
-    }
-    return ressourceData;
-}
-
-//simila to data controller path is absolute
-function getFileData(filepath, sync = true) {
-    let desiredPath = filepath;
-    if (fs.existsSync(desiredPath)) {
-        console.log("before readfile in getFileData");
-
-        //is not a directory it has to be a file or something similar
-        if (sync) {
-            console.log("im doing something in getFileData");
-            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
-
-        } else {
-            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                console.log("im doing something in getFileData");
-                if (err) {
-                    // res.writeHead(404);
-                    // res.end(JSON.stringify(err));
-                    return;
-                }
-                return data;
-            });
-        }
-
-        console.log("after readfile in getFileData")
-
-    }
-}
-
-//small function for encoding data
-function encodeData(origData) {
-    return encodeURIComponent(origData);
-
-}
-
-//handler function which returns if the credentials are correct
-//and the user ist authenticated
-//old legacy function
-async function userAuthenticated(username, passwd, req, res) {
-    passwdData = dataController("/passwd.json", true, req, res);
-    paswdAsJson = JSON.parse(passwdData);
-    pwFound = false;
-    //checks if the username and password are correct
-    if (paswdAsJson[username]) {
-        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-
-        if (passwdHash === paswdAsJson[username]["password"]) {
-            pwFound = true;
-        }
-    }
-
-
-    return pwFound;
-}
-
-//new from submission 4 authenticate
-async function authenticate(username, password) {
-    let user = await credentials.findOne({
-        username: encodeData(username),
-        password: password
-    });
-    return user !== null;
-}
-
-async function addUser(username, password) {
-    userExists = await credentials.findOne({'username': username});/*.toArray(/!*function(err, docs) {
-        assert.equal(err, null);
-        console.log("Found the following records");
-        console.log(docs);
-        callback(docs);
-    }*!/);*/
-    if (userExists === null) {
-        await credentials.insertOne({username: username, password: password});
-        return true;
-    } else {
-        return false;
-    }
-}
-
-//responsible for finding the session
-async function findSession(sessionid) {
-    test = await sessions.findOne({id: sessionid});
-    return test;
-}
-
-async function newSession() {
-    let sessionid = randomBytes(64).toString('hex');
-    test = await sessions.insertOne({id: sessionid, 'date': Date.now()});
-    return sessionid;
-}
-
-async function invalidateSession(sessionid) {
-    test = await sessions.findOneAndDelete({id: sessionid});
-    return test;
-}
-
-async function addSqueak(username, recipient, squeak) {
-    let options = {weekday: 'short', hour: 'numeric', minute: 'numeric'};
-    let time = new Date().toLocaleDateString('sv-SE', options);
-    await squeaks.insertOne({
-        name: username,
-        time: time,
-        recipient: recipient,
-        squeak: squeak
-    });
-}
-
-async function getSqueaks(recipient) {
-    recipient = encodeData(recipient);
-    testSqueak = await squeaks.find({recipient: recipient}).toArray();
-    return testSqueak;
-}
-
-async function getUsers() {
-    // Data.find({}).project({ _id : 1, serialno : 1 }).toArray()
-    testUser = await credentials.find().project({"username": 1, _id: 0}).toArray();
-    return testUser;
-}
-
-//currently only there to check if username already exists
-function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
-    async function checkUsernameFunction() {
-        // passwdData = dataController("/passwd.json", true, req, res);
-        // paswdAsJson = JSON.parse(passwdData);
-        usernameFound = false;
-        /*if (paswdAsJson[username]) {
-
-            if (Object.entries(paswdAsJson[username]).length !== 0) {
-                return true;
-            } else {
-                return false;
-            }
-        }*/
-        userExists = await credentials.findOne({'username': username});
-        if (userExists !== null) {
-            return true;
         } else {
             return false;
         }
-    }
-
-    if (checkUsername === true) {
-        return checkUsernameFunction();
-    } else {
-        return false;
-    }
-}
-
-//encrypts and saves pw's
-function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
-    if (password.length >= 128) {
-        return false;
-    }
-    if (salt == "") {
-        salt = randomBytes(16);
-    }
-    console.log(getHashes());
-    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
-    keyAsHex = key.toString('hex');
-    saltAsHex = salt.toString('hex');
-    console.log(keyAsHex);  // // 745e48...08d59ae'
-    user = username.toString();
-    if (save == true) {
-        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
-        passwdData = dataController("/passwd.json", true, "", "");
-        paswdAsJson = JSON.parse(passwdData);
-
-        //if the username doesnt yet exists
-        if (!paswdAsJson[username]) {
-            paswdAsJson[username] = dbObject[username];
-            jsonDbObject = JSON.stringify(paswdAsJson);
-            if (fs.existsSync("passwd.json")) {
-                fs.writeFileSync("passwd.json", jsonDbObject);
-            }
-        }
-    }
-    return keyAsHex;
-}
-
-//encrypts pw
-function hmacValue(value = "", secret = "16516080asdfjklb") {
-    if (value !== "") {
-        let hmac = createHmac('sha256', secret);
-        hmac.update(value);
-        console.log(`hmac:generated`);
-        //console.log(hmac.digest('hex'));
-        val = hmac.digest('hex');
-
-        return val;
-    }
-}
-
-/**
- * @param sessionid
- */
-function csrfHandler({
-                         compare = false,
-                         generate = false,
-                         csrf = "",
-                         encodedCookie = "",
-                         secret = "16516080asdfjklb",
-                         save = false,
-                         sessionid = ""
-                     } = {}) {
-    //for the normal synchronize token pattern
-    if (save === true && csrf !== "" && sessionid !== "") {
-        csrfTokens[sessionid] = csrf;
-        console.log(`saved token ${csrf}to cookie ${sessionid}`);
         return true;
+    } else if (load === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        return JSON.parse(squeakData);
     }
-
-//if the double submit cookie solution is used we compare the csrf token with the encrypted one from the cookie
-    else if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
-        ec = encodedCookie;
-        compareValue = hmacValue(csrf, secret);
-        return (ec === compareValue);
-    }
-//the case for the non double submit cookie solution
-    else if (compare === true && csrf !== "" && encodedCookie === "" && secret !== "") {
-        ec = encodedCookie;
-        compareValue = hmacValue(csrf, secret);
-        return (ec === compareValue);
-    } else if (generate === true && secret !== "") {
-        let randomToken = randomBytes(16);
-        let randomTokenHex = randomToken.toString('hex');
-        return randomTokenHex;
-    } else {
-        return false;
-    }
-
 }
 
 //old routing function which calls the appropriate handler
@@ -537,6 +264,310 @@ function staticServerHandler(req, res) {
     }
 }
 
+//function get called regularly to delete unvalid cookies
+async function deleteOldCookies(keepAliveTime) {
+    currentTime = Date.now();
+    console.log(Date.now() + "keepAliveTime" + keepAliveTime);
+    validcookies = await sessions.find({}).toArray();
+    for (cookie in validcookies) {
+        cookie = validcookies[cookie];
+        if ((currentTime - cookie["date"]) >= keepAliveTime) {
+            invalidateSession(cookie['id']);
+            delete csrfTokens[cookie['id']];
+        }
+    }
+
+
+}
+
+//handler function which returns if the credentials are correct
+//and the user ist authenticated
+//old legacy function
+async function userAuthenticated(username, passwd, req, res) {
+    passwdData = dataController("/passwd.json", true, req, res);
+    paswdAsJson = JSON.parse(passwdData);
+    pwFound = false;
+    //checks if the username and password are correct
+    if (paswdAsJson[username]) {
+        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+
+        if (passwdHash === paswdAsJson[username]["password"]) {
+            pwFound = true;
+        }
+    }
+
+
+    return pwFound;
+}
+
+//old function handler to verify, destroy and generate cookies
+function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
+
+    if (newCookie && cookieName !== "") {
+
+        cookieId = randomBytes(16).toString('hex');
+        //checks if cookieId already exists
+        if (cookieId in validcookies[cookieName]) {
+            cookieId = randomBytes(16).toString('hex');
+        }
+
+        validcookies[cookieName][cookieId] = Date.now();
+        //validcookies[cookieName].push(cookieObject);
+        return cookieId;
+
+    } else if (destroy && cookieId !== "") {
+        if (cookieId in validcookies[cookieName]) {
+            delete validcookies[cookieName][cookieId];
+        }
+    } else if (verify && cookieId !== "" && cookieName !== "") {
+        if (cookieId in validcookies[cookieName]) {
+            return true;
+        }
+        return false;
+    }
+}
+
+//returns the data of the file in the path as a string, path relative to directory
+function dataController(pathNameInCurrentDirectory, sync, req, res) {
+    let desiredPath = __dirname + pathNameInCurrentDirectory;
+    let ressourceData = "";
+    if (fs.existsSync(desiredPath)) {
+        console.log(`before readfile in ${pathNameInCurrentDirectory}`);
+
+        //possible to choose an syncn and non sync reading
+        if (!sync) {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something");
+                if (err) {
+                    res.writeHead(404);
+                    res.end(JSON.stringify(err));
+                    return;
+                }
+
+                ressourceData = data;
+            });
+
+            console.log("after readfile in {{pathNameInCurrentDirectory}}")
+        } else {
+            ressourceData = fs.readFileSync(desiredPath, {encoding: "utf-8"});
+        }
+    }
+    return ressourceData;
+}
+
+//simila to data controller path is absolute
+function getFileData(filepath, sync = true) {
+    let desiredPath = filepath;
+    if (fs.existsSync(desiredPath)) {
+        console.log("before readfile in getFileData");
+
+        //is not a directory it has to be a file or something similar
+        if (sync) {
+            console.log("im doing something in getFileData");
+            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
+
+        } else {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something in getFileData");
+                if (err) {
+                    // res.writeHead(404);
+                    // res.end(JSON.stringify(err));
+                    return;
+                }
+                return data;
+            });
+        }
+
+        console.log("after readfile in getFileData")
+
+    }
+}
+
+//small function for encoding data
+function encodeData(origData) {
+    return encodeURIComponent(origData);
+
+}
+
+
+//new from submission 4 authenticate
+async function authenticate(username, password) {
+    let user = await credentials.findOne({
+        username: encodeData(username),
+        password: password
+    });
+    return user !== null;
+}
+
+async function addUser(username, password) {
+    userExists = await credentials.findOne({'username': username});/*.toArray(/!*function(err, docs) {
+        assert.equal(err, null);
+        console.log("Found the following records");
+        console.log(docs);
+        callback(docs);
+    }*!/);*/
+    if (userExists === null) {
+        await credentials.insertOne({username: username, password: password});
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//responsible for finding the session
+async function findSession(sessionid) {
+    test = await sessions.findOne({id: sessionid});
+    return test;
+}
+
+async function newSession() {
+    let sessionid = randomBytes(64).toString('hex');
+    test = await sessions.insertOne({id: sessionid, 'date': Date.now()});
+    return sessionid;
+}
+
+async function invalidateSession(sessionid) {
+    test = await sessions.findOneAndDelete({id: sessionid});
+    return test;
+}
+
+async function addSqueak(username, recipient, squeak) {
+    let options = {weekday: 'short', hour: 'numeric', minute: 'numeric'};
+    let time = new Date().toLocaleDateString('sv-SE', options);
+    await squeaks.insertOne({
+        name: username,
+        time: time,
+        recipient: recipient,
+        squeak: squeak
+    });
+}
+
+async function getSqueaks(recipient) {
+    recipient = encodeData(recipient);
+    testSqueak = await squeaks.find({recipient: recipient}).toArray();
+    return testSqueak;
+}
+
+async function getUsers() {
+    // Data.find({}).project({ _id : 1, serialno : 1 }).toArray()
+    testUser = await credentials.find().project({"username": 1, _id: 0}).toArray();
+    return testUser;
+}
+
+//currently only there to check if username already exists
+function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
+    async function checkUsernameFunction() {
+        // passwdData = dataController("/passwd.json", true, req, res);
+        // paswdAsJson = JSON.parse(passwdData);
+        usernameFound = false;
+        /*if (paswdAsJson[username]) {
+
+            if (Object.entries(paswdAsJson[username]).length !== 0) {
+                return true;
+            } else {
+                return false;
+            }
+        }*/
+        userExists = await credentials.findOne({'username': username});
+        if (userExists !== null) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    if (checkUsername === true) {
+        return checkUsernameFunction();
+    } else {
+        return false;
+    }
+}
+
+//encrypts and saves pw's
+function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
+    if (password.length >= 128) {
+        return false;
+    }
+    if (salt == "") {
+        salt = randomBytes(16);
+    }
+    console.log(getHashes());
+    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
+    keyAsHex = key.toString('hex');
+    saltAsHex = salt.toString('hex');
+    console.log(keyAsHex);  // // 745e48...08d59ae'
+    user = username.toString();
+    if (save == true) {
+        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
+        passwdData = dataController("/passwd.json", true, "", "");
+        paswdAsJson = JSON.parse(passwdData);
+
+        //if the username doesnt yet exists
+        if (!paswdAsJson[username]) {
+            paswdAsJson[username] = dbObject[username];
+            jsonDbObject = JSON.stringify(paswdAsJson);
+            if (fs.existsSync("passwd.json")) {
+                fs.writeFileSync("passwd.json", jsonDbObject);
+            }
+        }
+    }
+    return keyAsHex;
+}
+
+//encrypts pw
+function hmacValue(value = "", secret = "16516080asdfjklb") {
+    if (value !== "") {
+        let hmac = createHmac('sha256', secret);
+        hmac.update(value);
+        console.log(`hmac:generated`);
+        //console.log(hmac.digest('hex'));
+        val = hmac.digest('hex');
+
+        return val;
+    }
+}
+
+/**
+ * @param sessionid
+ */
+function csrfHandler({
+                         compare = false,
+                         generate = false,
+                         csrf = "",
+                         encodedCookie = "",
+                         secret = "16516080asdfjklb",
+                         save = false,
+                         sessionid = ""
+                     } = {}) {
+    //for the normal synchronize token pattern
+    if (save === true && csrf !== "" && sessionid !== "") {
+        csrfTokens[sessionid] = csrf;
+        console.log(`saved token ${csrf}to cookie ${sessionid}`);
+        return true;
+    }
+
+//if the double submit cookie solution is used we compare the csrf token with the encrypted one from the cookie
+    else if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
+        ec = encodedCookie;
+        compareValue = hmacValue(csrf, secret);
+        return (ec === compareValue);
+    }
+//the case for the non double submit cookie solution
+    else if (compare === true && csrf !== "" && encodedCookie === "" && secret !== "") {
+        ec = encodedCookie;
+        compareValue = hmacValue(csrf, secret);
+        return (ec === compareValue);
+    } else if (generate === true && secret !== "") {
+        let randomToken = randomBytes(16);
+        let randomTokenHex = randomToken.toString('hex');
+        return randomTokenHex;
+    } else {
+        return false;
+    }
+
+}
+
+
 //logfunction to write important informations in the console
 function logStuff(req, res, next) {
     console.log("method: " + req.method + "" +
@@ -563,17 +594,6 @@ function logStuff(req, res, next) {
     }
 }
 
-
-//replace some variables with provided ones.
-function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
-    //read filedata
-    let file = dataController(filePath, true, req, res);
-    for (variable in replaceVariables) {
-        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
-    }
-
-    return file;
-}
 
 //atHome handler. submission2
 function atHomeHandler(req, res) {
@@ -997,28 +1017,6 @@ async function logout(req, res) {
 
 }
 
-//squeak handler responsibler for saving and loading squeaks
-function squeakHandler(save = false, squeakObject = {}, load = false) {
-    if (save === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        squeakDatadAsJson = JSON.parse(squeakData);
-        id = randomBytes(16).toString('hex');
-        squeakDatadAsJson[id] = squeakObject;
-        squeakStringified = JSON.stringify(squeakDatadAsJson);
-        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-        if (fs.existsSync("squeaks.json")) {
-            fs.writeFileSync("squeaks.json", squeakStringified);
-
-        } else {
-            return false;
-        }
-        return true;
-    } else if (load === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        return JSON.parse(squeakData);
-    }
-}
-
 //options for https
 const options = {
     key: fs.readFileSync('cert/server.key'),
@@ -1383,7 +1381,6 @@ MongoClient.connect(mongoURL)
             squeaks = db.collection('squeaks');
             credentials = db.collection('credentials');
             sessions = db.collection('sessions');
-            //tet = await addUser("testUssser","testPw");
 
             let server = https.createServer(options, app);
             server.listen(8000);

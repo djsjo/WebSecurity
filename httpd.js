@@ -42,6 +42,51 @@ let roomData = {
 let csrfTokens = {}
 const mongoURL = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
+//replace some variables with provided ones.
+function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
+    //read filedata
+    let file = dataController(filePath, true, req, res);
+    for (variable in replaceVariables) {
+        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
+    }
+
+    return file;
+}
+
+//has currently no function anymore
+function csrfMiddleware(req, res, next) {
+    //generate new csrf token
+    /*let csrfToken = csrfHandler({generate: true});
+    req.csrf = csrfToken;*/
+    //encryptedCSRF = hmacValue(csrfToken);
+    console.log("csrf: " + csrfToken);//+ " encrypted: " + encryptedCSRF);
+
+    //res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
+    next();
+}
+
+//squeak handler responsibler for saving and loading squeaks not neccessar anymore
+function squeakHandler(save = false, squeakObject = {}, load = false) {
+    if (save === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        squeakDatadAsJson = JSON.parse(squeakData);
+        id = randomBytes(16).toString('hex');
+        squeakDatadAsJson[id] = squeakObject;
+        squeakStringified = JSON.stringify(squeakDatadAsJson);
+        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+        if (fs.existsSync("squeaks.json")) {
+            fs.writeFileSync("squeaks.json", squeakStringified);
+
+        } else {
+            return false;
+        }
+        return true;
+    } else if (load === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        return JSON.parse(squeakData);
+    }
+}
+
 //function get called regularly to delete unvalid cookies
 async function deleteOldCookies(keepAliveTime) {
     currentTime = Date.now();
@@ -58,9 +103,202 @@ async function deleteOldCookies(keepAliveTime) {
 
 }
 
+//old routing function which calls the appropriate handler
+async function route(req, res) {
+    var url_parts = url.parse(req.url, true);
+    path1 = decodeURIComponent(url_parts.pathname);
+    pathSplit = path1.split('/');
+    if (pathSplit.includes("")) {
+        const index = pathSplit.indexOf("");
+        if (index > -1) {
+            pathSplit.splice(index, 1); // 2nd parameter means remove one item only
+        }
+    }
+    //show atHome application
+    if (pathSplit[0] == "login") {
+        await login(req, res);
+        return true;
+    } else if (pathSplit[0] == "logout") {
+        logout(req, res);
+        return true;
+    }
+    //show atHome application
+    else if (path1 == "/submission2") {
+        atHomeHandler(req, res);
+        return true;
+    }
+    //determines if the first parameter is a known room in our smart home
+    else if (rooms.includes(pathSplit[0])) {
+        atHomeHandler(req, res);
+        return true;
+    } else if (pathSplit[0] == 'information') {
+        information(req, res);
+        return true;
+    } else {
+        return false;
+        //staticServerHandler(req, res);
+    }
+}
+
+//old function used to only allow specific files. needed for older submissions
+function checkAllowedType(req, res) {
+    allowedTypes = [".js", ".html", ".css"];
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
+    if (allowedTypes.includes(path.extname(req.url))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//returns type of requested ressource old function
+function typehandling(req, res) {
+    reqUrl = new URL(req.url, 'https://' + req.headers.host);
+    //change file ending when path doesn't end with a file
+    if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
+        console.log("is one of the allowed files")
+        let tmp = path.extname(reqUrl.pathname);
+        switch (tmp) {
+            case ".js":
+                res.writeHead(200, {'Content-Type': 'text/javascript'});
+                return "js";
+            case ".html":
+                res.writeHead(200, {'Content-Type': 'text/html'});
+                return "html";
+            case ".css":
+                res.writeHead(200, {'Content-Type': 'text/css'});
+                return "css";
+            default:
+                // if none of the cases match
+                return "";
+        }
+    }
+}
+
+//sometimes needed for older submissions. most of the time the express.static takes over now
+function staticServerHandler(req, res) {
+    try {
+        normalizedUrl = path.normalize(req.url);
+        reqUrl = new URL(req.url, 'https://' + req.headers.host);
+    } catch (e) {
+        res.writeHead(404);
+        res.end("404 Eror");
+        return;
+    }
+    //change file endeing when path doesnt end with a file
+    if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
+        console.log("is one of the allowed files")
+        let tmp = path.extname(reqUrl.pathname);
+        switch (tmp) {
+            //css and js need Public in the path
+            case ".js":
+            case ".html":
+            case ".css":
+                if (!reqUrl.pathname.includes("/Public")) {
+                    reqUrl.pathname = '/Public' + reqUrl.pathname;
+                }
+                break;
+
+        }
+
+        switch (tmp) {
+            case ".js":
+                res.writeHead(200, {'Content-Type': 'text/javascript'});
+                break;
+            case ".html":
+                res.writeHead(200, {'Content-Type': 'text/html'});
+                break;
+            case ".css":
+                res.writeHead(200, {'Content-Type': 'text/css'});
+                break;
+            default:
+                break;
+        }
+
+    }
+    // else if (reqUrl.pathname.slice(-1) !== '/') {
+    //     console.log("has not the ending / inside allowed files")
+    //
+    //     console.log("has not /");
+    //     reqUrl.pathname += '/';
+    //     req.url += "/";
+    // }
+
+
+    //check if if path exists
+    if (fs.existsSync(__dirname + reqUrl.pathname)) {
+        //check if it is a directory and has an
+        if (fs.statSync(__dirname + reqUrl.pathname).isDirectory()) {
+            //check if index.html exists
+            if (reqUrl.pathname.slice(-1) !== '/') {
+                console.log("has not /");
+                reqUrl.pathname += '/';
+            }
+            if (fs.existsSync(__dirname + reqUrl.pathname + 'index.html')) {
+                reqUrl.pathname += '/index.html';
+                fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
+                    console.log("calling readfile with index.html path");
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    res.end(data);
+                });
+
+            }
+            //else show directory
+            else {
+                fs.readdir(__dirname + reqUrl.pathname, function (err, data) {
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    console.log(data.toString());
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    res.write("<table>");
+                    for (i = 0; i < data.length; i++) {
+                        res.write('<tr><td>' + data[i]
+                            + '</td></tr>')
+                        console.log(data[i]);
+                    }
+                    res.write("</table>");
+
+                    res.end();
+
+                });
+            }
+        } //show what's in the file
+        else {
+            //is not a directory it has to be a file or something similar
+            //need to safe it separately because of some kind of scope problem
+            fullPathname = reqUrl.pathname;
+            if (checkAllowedType(req, res)) {
+                fs.readFile(__dirname + fullPathname, function (err, data) {
+                    if (err) {
+                        res.writeHead(404);
+                        res.end(JSON.stringify(err));
+                        return;
+                    }
+                    res.end(data);
+                });
+            } else {
+                res.writeHead(404);
+                res.end("404");
+            }
+        }
+    } else {
+        console.log("path doesnt exist: " + __dirname + reqUrl.pathname);
+        res.writeHead(404);
+        res.end("404 Eror");
+    }
+}
+
 //handler to verify, destroy and generate cookies
 function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
-    
+
     if (newCookie && cookieName !== "") {
 
         cookieId = randomBytes(16).toString('hex');
@@ -344,198 +582,6 @@ function csrfHandler({
 
 }
 
-//old routing function which calls the appropriate handler
-async function route(req, res) {
-    var url_parts = url.parse(req.url, true);
-    path1 = decodeURIComponent(url_parts.pathname);
-    pathSplit = path1.split('/');
-    if (pathSplit.includes("")) {
-        const index = pathSplit.indexOf("");
-        if (index > -1) {
-            pathSplit.splice(index, 1); // 2nd parameter means remove one item only
-        }
-    }
-    //show atHome application
-    if (pathSplit[0] == "login") {
-        await login(req, res);
-        return true;
-    } else if (pathSplit[0] == "logout") {
-        logout(req, res);
-        return true;
-    }
-    //show atHome application
-    else if (path1 == "/submission2") {
-        atHomeHandler(req, res);
-        return true;
-    }
-    //determines if the first parameter is a known room in our smart home
-    else if (rooms.includes(pathSplit[0])) {
-        atHomeHandler(req, res);
-        return true;
-    } else if (pathSplit[0] == 'information') {
-        information(req, res);
-        return true;
-    } else {
-        return false;
-        //staticServerHandler(req, res);
-    }
-}
-
-//old function used to only allow specific files. needed for older submissions
-function checkAllowedType(req, res) {
-    allowedTypes = [".js", ".html", ".css"];
-    reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    if (allowedTypes.includes(path.extname(req.url))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-//returns type of requested ressource
-function typehandling(req, res) {
-    reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    //change file ending when path doesn't end with a file
-    if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
-        console.log("is one of the allowed files")
-        let tmp = path.extname(reqUrl.pathname);
-        switch (tmp) {
-            case ".js":
-                res.writeHead(200, {'Content-Type': 'text/javascript'});
-                return "js";
-            case ".html":
-                res.writeHead(200, {'Content-Type': 'text/html'});
-                return "html";
-            case ".css":
-                res.writeHead(200, {'Content-Type': 'text/css'});
-                return "css";
-            default:
-                // if none of the cases match
-                return "";
-        }
-    }
-}
-
-//sometimes needed for older submissions. most of the time the express.static takes over now
-function staticServerHandler(req, res) {
-    try {
-        normalizedUrl = path.normalize(req.url);
-        reqUrl = new URL(req.url, 'https://' + req.headers.host);
-    } catch (e) {
-        res.writeHead(404);
-        res.end("404 Eror");
-        return;
-    }
-    //change file endeing when path doesnt end with a file
-    if ([".js", ".html", ".css"].includes(path.extname(reqUrl.pathname))) {
-        console.log("is one of the allowed files")
-        let tmp = path.extname(reqUrl.pathname);
-        switch (tmp) {
-            //css and js need Public in the path
-            case ".js":
-            case ".html":
-            case ".css":
-                if (!reqUrl.pathname.includes("/Public")) {
-                    reqUrl.pathname = '/Public' + reqUrl.pathname;
-                }
-                break;
-
-        }
-
-        switch (tmp) {
-            case ".js":
-                res.writeHead(200, {'Content-Type': 'text/javascript'});
-                break;
-            case ".html":
-                res.writeHead(200, {'Content-Type': 'text/html'});
-                break;
-            case ".css":
-                res.writeHead(200, {'Content-Type': 'text/css'});
-                break;
-            default:
-                break;
-        }
-
-    }
-    // else if (reqUrl.pathname.slice(-1) !== '/') {
-    //     console.log("has not the ending / inside allowed files")
-    //
-    //     console.log("has not /");
-    //     reqUrl.pathname += '/';
-    //     req.url += "/";
-    // }
-
-
-    //check if if path exists
-    if (fs.existsSync(__dirname + reqUrl.pathname)) {
-        //check if it is a directory and has an
-        if (fs.statSync(__dirname + reqUrl.pathname).isDirectory()) {
-            //check if index.html exists
-            if (reqUrl.pathname.slice(-1) !== '/') {
-                console.log("has not /");
-                reqUrl.pathname += '/';
-            }
-            if (fs.existsSync(__dirname + reqUrl.pathname + 'index.html')) {
-                reqUrl.pathname += '/index.html';
-                fs.readFile(__dirname + reqUrl.pathname, function (err, data) {
-                    console.log("calling readfile with index.html path");
-                    if (err) {
-                        res.writeHead(404);
-                        res.end(JSON.stringify(err));
-                        return;
-                    }
-                    res.writeHead(200, {'Content-Type': 'text/html'});
-                    res.end(data);
-                });
-
-            }
-            //else show directory
-            else {
-                fs.readdir(__dirname + reqUrl.pathname, function (err, data) {
-                    if (err) {
-                        res.writeHead(404);
-                        res.end(JSON.stringify(err));
-                        return;
-                    }
-                    console.log(data.toString());
-                    res.writeHead(200, {'Content-Type': 'text/html'});
-                    res.write("<table>");
-                    for (i = 0; i < data.length; i++) {
-                        res.write('<tr><td>' + data[i]
-                            + '</td></tr>')
-                        console.log(data[i]);
-                    }
-                    res.write("</table>");
-
-                    res.end();
-
-                });
-            }
-        } //show what's in the file
-        else {
-            //is not a directory it has to be a file or something similar
-            //need to safe it separately because of some kind of scope problem
-            fullPathname = reqUrl.pathname;
-            if (checkAllowedType(req, res)) {
-                fs.readFile(__dirname + fullPathname, function (err, data) {
-                    if (err) {
-                        res.writeHead(404);
-                        res.end(JSON.stringify(err));
-                        return;
-                    }
-                    res.end(data);
-                });
-            } else {
-                res.writeHead(404);
-                res.end("404");
-            }
-        }
-    } else {
-        console.log("path doesnt exist: " + __dirname + reqUrl.pathname);
-        res.writeHead(404);
-        res.end("404 Eror");
-    }
-}
 
 //logfunction to write important informations in the console
 function logStuff(req, res, next) {
@@ -687,16 +733,6 @@ async function inputValidation(req, res, next) {
 
 }
 
-//replace some variables with provided ones.
-function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
-    //read filedata
-    let file = dataController(filePath, true, req, res);
-    for (variable in replaceVariables) {
-        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
-    }
-
-    return file;
-}
 
 //atHome handler. submission2
 function atHomeHandler(req, res) {
@@ -900,7 +936,7 @@ function information(req, res) {
     }
 }
 
-//checks for valid cookies and storres them in the session
+//checks for valid cookies and stores them in the session
 async function sessionMiddleware(req, res, next) {
     cookieName = req.cookieName;
     // var cookies = cookie.parse(req.headers.cookie || '');
@@ -955,17 +991,6 @@ async function sessionMiddleware(req, res, next) {
 
 }
 
-//has currently no function anymore
-function csrfMiddleware(req, res, next) {
-    //generate new csrf token
-    /*let csrfToken = csrfHandler({generate: true});
-    req.csrf = csrfToken;*/
-    //encryptedCSRF = hmacValue(csrfToken);
-    console.log("csrf: " + csrfToken);//+ " encrypted: " + encryptedCSRF);
-
-    //res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
-    next();
-}
 
 //login handler.older submissions
 async function login(req, res) {
@@ -1135,28 +1160,6 @@ async function logout(req, res) {
         return;
     }
 
-}
-
-//squeak handler responsibler for saving and loading squeaks
-function squeakHandler(save = false, squeakObject = {}, load = false) {
-    if (save === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        squeakDatadAsJson = JSON.parse(squeakData);
-        id = randomBytes(16).toString('hex');
-        squeakDatadAsJson[id] = squeakObject;
-        squeakStringified = JSON.stringify(squeakDatadAsJson);
-        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-        if (fs.existsSync("squeaks.json")) {
-            fs.writeFileSync("squeaks.json", squeakStringified);
-
-        } else {
-            return false;
-        }
-        return true;
-    } else if (load === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        return JSON.parse(squeakData);
-    }
 }
 
 
@@ -1484,13 +1487,6 @@ MongoClient.connect(mongoURL)
             squeaks = db.collection('squeaks');
             credentials = db.collection('credentials');
             sessions = db.collection('sessions');
-            //tet = await addUser("testUssser","testPw");
-            let attack = `$gt": "`;
-            let test1 = encodeData(`{$gt:''}`);
-            let test2 = {$regex: 'daniel', $options: "si"};
-            let test = await credentials.findOne({username: test2, password: {"$gt": ""}});//{"$gt": ""}
-
-
             let server = https.createServer(options, app);
             server.listen(8000);
             setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes

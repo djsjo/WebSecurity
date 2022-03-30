@@ -1,0 +1,8 @@
+Cookie integrity attacks
+I made a new User "AttackerCookieIntegrity" and once I was logged in, I just changed the username in the cookie to  "%7B%22sessionid%22%3A%2213a0af4d3e0dd07b6d73d6b32b8b1615e5dfc0639eb00434331410ff9c58c5ea5fb547f21a597126588ab6fed576508e0c79d2bbfb53a3442c4bc42032d16608%22%2C%22username%22%3A%22A. Church%22%7D" and refreshed the Site. Now I am able to post as "A. Church" and read his private Messages.
+
+This is possible because we're checking for authentication but not authorization and everyone can tamper with the cookie without the server knowing.
+
+As a Countermeasure I used the cookie and cookieparser functionality of express which allowed me directly to sign the cookies and unsign them.
+I also changed the sessionmiddleware to use the req.signedcookies and if its false or undefined, it directly throws an error and sends an 405 status.
+I can't tamper with the cookie anymore and therefore arent able to do the previous attacks.
