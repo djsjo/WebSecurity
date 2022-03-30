@@ -60,7 +60,7 @@ async function deleteOldCookies(keepAliveTime) {
 
 //handler to verify, destroy and generate cookies
 function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
-
+    
     if (newCookie && cookieName !== "") {
 
         cookieId = randomBytes(16).toString('hex');
@@ -113,7 +113,7 @@ function dataController(pathNameInCurrentDirectory, sync, req, res) {
     return ressourceData;
 }
 
-//simila to data controller path is absolute
+//similar to data controller path is absolute
 function getFileData(filepath, sync = true) {
     let desiredPath = filepath;
     if (fs.existsSync(desiredPath)) {
@@ -143,8 +143,8 @@ function getFileData(filepath, sync = true) {
 
 //small function for encoding data
 function encodeData(origData) {
-    complete= encodeURIComponent(origData);
-    complete=complete.replace(encodeURIComponent(" ")," ");
+    complete = encodeURIComponent(origData);
+    complete = complete.replace(encodeURIComponent(" "), " ");
     return complete;
 
 }
@@ -307,9 +307,6 @@ function hmacValue(value = "", secret = "16516080asdfjklb") {
     }
 }
 
-/**
- * @param sessionid
- */
 function csrfHandler({
                          compare = false,
                          generate = false,
@@ -590,11 +587,11 @@ async function inputValidation(req, res, next) {
                 //check against regex
                 //^(?=.{8,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$
                 //adapted from https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
-                let nameregex = new RegExp(`^(?=.{4,20}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-ZäöüÄÖÜß0-9._" "]+(?<![_.\{\}])$`);
+                let nameregex = new RegExp(`^(?=.{4,30}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-ZäöüÄÖÜß0-9._" "]+(?<![_.\{\}])$`);
                 result = nameregex.test(username);
                 if ([`/signin`].includes(req.path)) {
                     if (unallowedCharacters) {
-                       // res.json({success: false, reason: "username"});
+                        // res.json({success: false, reason: "username"});
                         res.json(false);
                         return;
                     }
@@ -684,7 +681,7 @@ async function inputValidation(req, res, next) {
         }
         next();
     } catch (e) {
-        console.log("Exception: "+e);
+        console.log("Exception: " + e);
     }
 
 
@@ -905,10 +902,16 @@ function information(req, res) {
 
 //checks for valid cookies and storres them in the session
 async function sessionMiddleware(req, res, next) {
-    // var cookies = cookie.parse(req.headers.cookie || '');
-    let cookies = req.cookies;
     cookieName = req.cookieName;
+    // var cookies = cookie.parse(req.headers.cookie || '');
     try {
+        if (typeof (req.signedCookies) === undefined || req.signedCookies[cookieName] === false) {
+            res.status(405).send('Someone tampered with the cookie')
+            throw new Error('Someone tampered with the cookie');
+
+        }
+        let cookies = req.signedCookies;
+
         if (Object.entries(cookies).length !== 0) {
             if (cookies[cookieName]) {
                 cookieAsJson = JSON.parse(cookies[cookieName]/*, (key, value) => {
@@ -944,6 +947,7 @@ async function sessionMiddleware(req, res, next) {
         //had to disable it because otherwise the old routing doesnt work
         //throw new Error('Invalid cookies');
         console.log(e);
+        return;
         //next();
     }
 
@@ -1155,6 +1159,7 @@ function squeakHandler(save = false, squeakObject = {}, load = false) {
     }
 }
 
+
 //options for https
 const options = {
     key: fs.readFileSync('cert/server.key'),
@@ -1168,7 +1173,7 @@ app.engine('template', mustacheExpress());
 app.set('view engine', 'mustache');
 app.set('views', __dirname + '/templates');
 //call cookieParser every time
-app.use(cookieParser());
+app.use(cookieParser("secret"));
 //set the needed cookiename so every function can use it
 app.use((req, res, next) => {
     req.cookieName = "squeak-session";
@@ -1194,6 +1199,7 @@ app.post('/signin', express.json(), inputValidation, async (req, res) => {
             //cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
+            console.log(`unsigned cookie ${req.session.sessionid}`)
 
             if (req.session["sessionid"]) {
                 //generate csrf token
@@ -1208,7 +1214,8 @@ app.post('/signin', express.json(), inputValidation, async (req, res) => {
                 maxAge: (60 * 30 * 1000),
                 httpOnly: true,
                 secure: true,
-                sameSite: true
+                sameSite: true,
+                signed: true
             });
 
             res.json(true);
@@ -1221,7 +1228,7 @@ app.post('/signin', express.json(), inputValidation, async (req, res) => {
         res.status(404).send('Sorry, something went wrong!')
     }
 });
-app.post('/signup', express.json(),inputValidation, async (req, res) => {
+app.post('/signup', express.json(), inputValidation, async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
@@ -1290,7 +1297,8 @@ app.post('/signup', express.json(),inputValidation, async (req, res) => {
                 maxAge: (60 * 30 * 1000),
                 httpOnly: true,
                 secure: true,
-                sameSite: true
+                sameSite: true,
+                signed: true
             });
             //save pw locally and in "db"
             //pwHash = encryptPW(password, 100000, "", username, true);
@@ -1323,7 +1331,7 @@ app.post('/signup', express.json(),inputValidation, async (req, res) => {
 });
 app.post('/signout', async (req, res) => {
     try { //invalidate the cookie
-        let cookies = req.cookies;
+        let cookies = req.signedCookies;
         cookieName = "squeak-session";
         if (cookies[cookieName]) {
             cookieAsJson = JSON.parse(cookies[cookieName]);

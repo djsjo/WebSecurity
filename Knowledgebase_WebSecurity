@@ -79,6 +79,8 @@ The same was for the credetial of a special person: when used as username { $reg
 If i would use salt and hash this attacks wouldn't change because the expression is only used to find the username and pw in the db.
 In order to be more protected i have to check if the found username and userpw is the same, i provided.
 
+To make it work i would have to add functionality to rehash the given pw and compare it to the one in the db. This way the attack json "{"$gt": ""}" would be interpreted as a String and fail to access the db.
+
 datatype validators,Integer.parseInt() with exception, check if input 
 As a fix i made a middleware called "inputValidation". It mainly there for the username and password. I first start by checking agains a blacklist with unallowed sign which are often used for regex in order to prevent a regexdos. Then Im checking based on path different things. For example for "/signin" im checking the username against the usernames in the db.
 I also took a regexpression for valid usernames and check it for every username.
@@ -91,7 +93,14 @@ As a bonus im only searching the username after encoding it.
 I tried to do the same attacks from before but the inputValidator could stop the request before something else happened.
 
 
+Cookie integrity attacks
+I made a new User "AttackerCookieIntegrity" and once I was logged in, i just changed the username in the cookie to  "%7B%22sessionid%22%3A%2213a0af4d3e0dd07b6d73d6b32b8b1615e5dfc0639eb00434331410ff9c58c5ea5fb547f21a597126588ab6fed576508e0c79d2bbfb53a3442c4bc42032d16608%22%2C%22username%22%3A%22A. Church%22%7D" and refreshed the Site. Now i am able to post as "A. Church" and read his private Messages.
 
+This is possible because we're checking for authentication but not authorization and everyone can tamper with the cookie without the server knowing.
+
+As a Countermeasure i used the cookie and cookieparser functionality of express which allowed me directly to sign the cookies and unsign them.
+I also change the sessionmiddleware to use the req.signedcookies and if its fals or undefined it directly throws an error and sends an 405 status.
+I can't tamper with the cookie anymore.
 
 _______________________________________________________________________________________________________________________
 
