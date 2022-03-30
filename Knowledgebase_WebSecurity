@@ -40,6 +40,69 @@ ________________________________________________________________________________
 Submission 3:
 -changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
 -made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+______________________________________________________________________________________________________________________________________________
+Submission 4:
+username:websecurity pw: fisksoppa
+
+
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+client.connect(err => {
+  const collection = client.db("test").collection("devices");
+  // perform actions on the collection object
+  client.close();
+});
+
+
+I orignally made my own cookie handlers and would have adaptem them to handle the db. But in order for you to better get my code, i just put in your functions like newSession() etc.
+
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106e32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106aae32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
+
+
+
+todo:
+when log out destroy csrf and cookie
+
+squeak-session=%7B%22sessionid%22%3A%22{"$gt": ""}%22%2C%22username%22%3A%7B%22%24gt%22%3A%22%22%7D%7D; Max-Age=1800; Path=/; Expires=Fri, 25 Mar 2022 15:30:34 GMT; HttpOnly; Secure; SameSite=Strict
+
+NoSQL injection
+I was able to bypass authentification by using the user and pw "{"$gt": ""}", sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
+
+To hijack a session i analyzed the structure of the cookie and inserted the "{'$gt':''}" where the session id is normaly: "squeak-session=%7B%22sessionid%22%3A%22{"$gt":''}}%22%2C%22username%22%3A%22daniel%22%7D" for example. But no matter what i tried, the combination of my, cookie.parser and my session handler who interprets the cookie value as json made the neccessary object always to a string which prohibited it from getting the cookie.
+
+I was able to get the session when doing it directly in my code. but didnt find a way to make it work as a "client"
+
+The same was for the credetial of a special person: when used as username { $regex: 'daniel', $options: "si" } and as password {"$gt": ""} i was able to retrieve the credentials of this person. After getting through a rest client the according cookie i was able to read all messages from the perspective of this person.
+
+If i would use salt and hash this attacks wouldn't change because the expression is only used to find the username and pw in the db.
+In order to be more protected i have to check if the found username and userpw is the same, i provided.
+
+To make it work i would have to add functionality to rehash the given pw and compare it to the one in the db. This way the attack json "{"$gt": ""}" would be interpreted as a String and fail to access the db.
+
+datatype validators,Integer.parseInt() with exception, check if input 
+As a fix i made a middleware called "inputValidation". It mainly there for the username and password. I first start by checking agains a blacklist with unallowed sign which are often used for regex in order to prevent a regexdos. Then Im checking based on path different things. For example for "/signin" im checking the username against the usernames in the db.
+I also took a regexpression for valid usernames and check it for every username.
+For passwords im only checking that it hasnt some specific characters in order to prevent json and regex.
+
+Now im calling the middleware for signin and signup before somehting with the data even happens.
+
+As a bonus im only searching the username after encoding it.
+
+I tried to do the same attacks from before but the inputValidator could stop the request before something else happened.
+
+
+Cookie integrity attacks
+I made a new User "AttackerCookieIntegrity" and once I was logged in, i just changed the username in the cookie to  "%7B%22sessionid%22%3A%2213a0af4d3e0dd07b6d73d6b32b8b1615e5dfc0639eb00434331410ff9c58c5ea5fb547f21a597126588ab6fed576508e0c79d2bbfb53a3442c4bc42032d16608%22%2C%22username%22%3A%22A. Church%22%7D" and refreshed the Site. Now i am able to post as "A. Church" and read his private Messages.
+
+This is possible because we're checking for authentication but not authorization and everyone can tamper with the cookie without the server knowing.
+
+As a Countermeasure i used the cookie and cookieparser functionality of express which allowed me directly to sign the cookies and unsign them.
+I also change the sessionmiddleware to use the req.signedcookies and if its fals or undefined it directly throws an error and sends an 405 status.
+I can't tamper with the cookie anymore.
+
+_______________________________________________________________________________________________________________________
 
 Stored XSS Atack:
 The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
@@ -142,7 +205,7 @@ links:
 -writing middleware in express: https://expressjs.com/en/guide/writing-middleware.html
 -server side forms validation: https://getbootstrap.com/docs/4.0/components/forms/#server-side
 -document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
--csrf prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+-xss prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
 -mustache git: https://github.com/janl/mustache.js
 -mustache express: https://www.npmjs.com/package/mustache-express
 -good explanation: csrf
