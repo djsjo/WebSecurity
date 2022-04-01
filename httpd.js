@@ -10,8 +10,6 @@ const app = express();
 const port = 8000;
 const router = express.Router();
 var cookieParser = require('cookie-parser');
-var mustacheExpress = require('mustache-express');
-var Mustache = require('mustache');
 const {
     getHashes
 } = require('crypto');
@@ -21,10 +19,7 @@ const {
 const {
     randomBytes,
 } = require('crypto');
-const {
-    createHmac
-} = require('crypto');
-const {MongoClient} = require("mongodb");
+const bodyParser = require("express");
 
 let rooms = ["livingroom",
     "bedroom",
@@ -35,76 +30,191 @@ let roomData = {
     livingroom: {temperature: 22, lights: {sofa: true, ceiling: false}},
     bedroom: {temperature: 20, lights: {bed: true, ceiling: false}}
 };
-/*let validcookies = {
+let validcookies = {
     'athome-session': {},
     'squeak-session': {123: 123}
-};*/
-let csrfTokens = {}
-const mongoURL = "mongodb+srv://websecurity:fisksoppa@websecurity.yyrpv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+};
 
-//replace some variables with provided ones.
-function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
-    //read filedata
-    let file = dataController(filePath, true, req, res);
-    for (variable in replaceVariables) {
-        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
+//function get called regularly to delete unvalid cookies
+function deleteOldCookies(keepAliveTime) {
+    currentTime = Date.now();
+    console.log(Date.now() + "keepAliveTime" + keepAliveTime);
+    for (cookieTypes in validcookies) {
+        for (eachCookie in validcookies[cookieTypes]) {
+            if ((currentTime - validcookies[cookieTypes][eachCookie]) >= keepAliveTime) {
+                delete validcookies[cookieTypes][eachCookie];
+            }
+        }
     }
 
-    return file;
+
 }
 
-//has currently no function anymore
-function csrfMiddleware(req, res, next) {
-    //generate new csrf token
-    /*let csrfToken = csrfHandler({generate: true});
-    req.csrf = csrfToken;*/
-    //encryptedCSRF = hmacValue(csrfToken);
-    console.log("csrf: " + csrfToken);//+ " encrypted: " + encryptedCSRF);
+//handler to verify, destroy and generate cookies
+function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
 
-    //res.cookie("csrfToken", encryptedCSRF, {maxAge: (60 * 30 * 1000), httpOnly: true, secure: true, sameSite: true});
-    next();
+    if (newCookie && cookieName !== "") {
+
+        cookieId = randomBytes(16).toString('hex');
+        //checks if cookieId already exists
+        if (cookieId in validcookies[cookieName]) {
+            cookieId = randomBytes(16).toString('hex');
+        }
+
+        validcookies[cookieName][cookieId] = Date.now();
+        //validcookies[cookieName].push(cookieObject);
+        return cookieId;
+
+    } else if (destroy && cookieId !== "") {
+        if (cookieId in validcookies[cookieName]) {
+            delete validcookies[cookieName][cookieId];
+        }
+    } else if (verify && cookieId !== "" && cookieName !== "") {
+        if (cookieId in validcookies[cookieName]) {
+            return true;
+        }
+        return false;
+    }
 }
 
-//squeak handler responsibler for saving and loading squeaks not neccessar anymore
-function squeakHandler(save = false, squeakObject = {}, load = false) {
-    if (save === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        squeakDatadAsJson = JSON.parse(squeakData);
-        id = randomBytes(16).toString('hex');
-        squeakDatadAsJson[id] = squeakObject;
-        squeakStringified = JSON.stringify(squeakDatadAsJson);
-        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-        if (fs.existsSync("squeaks.json")) {
-            fs.writeFileSync("squeaks.json", squeakStringified);
+//returns the data of the file in the path as a string, path relative to directory
+function dataController(pathNameInCurrentDirectory, sync, req, res) {
+    let desiredPath = __dirname + pathNameInCurrentDirectory;
+    let ressourceData = "";
+    if (fs.existsSync(desiredPath)) {
+        console.log(`before readfile in ${pathNameInCurrentDirectory}`);
 
+        //possible to choose an syncn and non sync reading
+        if (!sync) {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something");
+                if (err) {
+                    res.writeHead(404);
+                    res.end(JSON.stringify(err));
+                    return;
+                }
+
+                ressourceData = data;
+            });
+
+            console.log("after readfile in {{pathNameInCurrentDirectory}}")
+        } else {
+            ressourceData = fs.readFileSync(desiredPath, {encoding: "utf-8"});
+        }
+    }
+    return ressourceData;
+}
+
+//simila to data controller path is absolute
+function getFileData(filepath, sync = true) {
+    let desiredPath = filepath;
+    if (fs.existsSync(desiredPath)) {
+        console.log("before readfile in getFileData");
+
+        //is not a directory it has to be a file or something similar
+        if (sync) {
+            console.log("im doing something in getFileData");
+            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
+
+        } else {
+            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
+                console.log("im doing something in getFileData");
+                if (err) {
+                    // res.writeHead(404);
+                    // res.end(JSON.stringify(err));
+                    return;
+                }
+                return data;
+            });
+        }
+
+        console.log("after readfile in getFileData")
+
+    }
+}
+
+//small function for encoding data
+function encodeData(origData) {
+    return encodeURIComponent(origData);
+
+}
+
+//handler function which returns if the credentials are correct
+//and the user ist authenticated
+async function userAuthenticated(username, passwd, req, res) {
+    passwdData = dataController("/passwd.json", true, req, res);
+    paswdAsJson = JSON.parse(passwdData);
+    pwFound = false;
+    if (paswdAsJson[username]) {
+        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+
+        if (passwdHash === paswdAsJson[username]["password"]) {
+            pwFound = true;
+        }
+    }
+
+
+    return pwFound;
+}
+
+//currently only there to check if username already exists
+function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
+    function checkUsernameFunction() {
+        passwdData = dataController("/passwd.json", true, req, res);
+        paswdAsJson = JSON.parse(passwdData);
+        usernameFound = false;
+        if (paswdAsJson[username]) {
+
+            if (Object.entries(paswdAsJson[username]).length !== 0) {
+                return true;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }
-        return true;
-    } else if (load === true) {
-        squeakData = dataController("/squeaks.json", true, "", "");
-        return JSON.parse(squeakData);
+    }
+
+    if (checkUsername === true) {
+        return checkUsernameFunction();
+    } else {
+        return false;
     }
 }
 
-//function get called regularly to delete unvalid cookies
-async function deleteOldCookies(keepAliveTime) {
-    currentTime = Date.now();
-    console.log(Date.now() + "keepAliveTime" + keepAliveTime);
-    validcookies = await sessions.find({}).toArray();
-    for (cookie in validcookies) {
-        cookie = validcookies[cookie];
-        if ((currentTime - cookie["date"]) >= keepAliveTime) {
-            invalidateSession(cookie['id']);
-            delete csrfTokens[cookie['id']];
+//encrypts and saves pw's
+function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
+    if (password.length >= 128) {
+        return false;
+    }
+    if (salt == "") {
+        salt = randomBytes(16);
+    }
+    console.log(getHashes());
+    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
+    keyAsHex = key.toString('hex');
+    saltAsHex = salt.toString('hex');
+    console.log(keyAsHex);  // // 745e48...08d59ae'
+    user = username.toString();
+    if (save == true) {
+        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
+        passwdData = dataController("/passwd.json", true, "", "");
+        paswdAsJson = JSON.parse(passwdData);
+
+        //if the username doesnt yet exists
+        if (!paswdAsJson[username]) {
+            paswdAsJson[username] = dbObject[username];
+            jsonDbObject = JSON.stringify(paswdAsJson);
+            if (fs.existsSync("passwd.json")) {
+                fs.writeFileSync("passwd.json", jsonDbObject);
+            }
         }
     }
-
-
+    return keyAsHex;
 }
 
 //old routing function which calls the appropriate handler
-async function route(req, res) {
+function route(req, res) {
     var url_parts = url.parse(req.url, true);
     path1 = decodeURIComponent(url_parts.pathname);
     pathSplit = path1.split('/');
@@ -116,7 +226,7 @@ async function route(req, res) {
     }
     //show atHome application
     if (pathSplit[0] == "login") {
-        await login(req, res);
+        login(req, res);
         return true;
     } else if (pathSplit[0] == "logout") {
         logout(req, res);
@@ -151,7 +261,7 @@ function checkAllowedType(req, res) {
     }
 }
 
-//returns type of requested ressource old function
+//returns type of requested ressource
 function typehandling(req, res) {
     reqUrl = new URL(req.url, 'https://' + req.headers.host);
     //change file ending when path doesn't end with a file
@@ -296,293 +406,6 @@ function staticServerHandler(req, res) {
     }
 }
 
-//handler to verify, destroy and generate cookies
-function cookieHandler(cookieName = "", newCookie = true, destroy = false, verify = false, cookieId = "") {
-
-    if (newCookie && cookieName !== "") {
-
-        cookieId = randomBytes(16).toString('hex');
-        //checks if cookieId already exists
-        if (cookieId in validcookies[cookieName]) {
-            cookieId = randomBytes(16).toString('hex');
-        }
-
-        validcookies[cookieName][cookieId] = Date.now();
-        //validcookies[cookieName].push(cookieObject);
-        return cookieId;
-
-    } else if (destroy && cookieId !== "") {
-        if (cookieId in validcookies[cookieName]) {
-            delete validcookies[cookieName][cookieId];
-        }
-    } else if (verify && cookieId !== "" && cookieName !== "") {
-        if (cookieId in validcookies[cookieName]) {
-            return true;
-        }
-        return false;
-    }
-}
-
-//returns the data of the file in the path as a string, path relative to directory
-function dataController(pathNameInCurrentDirectory, sync, req, res) {
-    let desiredPath = __dirname + pathNameInCurrentDirectory;
-    let ressourceData = "";
-    if (fs.existsSync(desiredPath)) {
-        console.log(`before readfile in ${pathNameInCurrentDirectory}`);
-
-        //possible to choose an syncn and non sync reading
-        if (!sync) {
-            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                console.log("im doing something");
-                if (err) {
-                    res.writeHead(404);
-                    res.end(JSON.stringify(err));
-                    return;
-                }
-
-                ressourceData = data;
-            });
-
-            console.log("after readfile in {{pathNameInCurrentDirectory}}")
-        } else {
-            ressourceData = fs.readFileSync(desiredPath, {encoding: "utf-8"});
-        }
-    }
-    return ressourceData;
-}
-
-//similar to data controller path is absolute
-function getFileData(filepath, sync = true) {
-    let desiredPath = filepath;
-    if (fs.existsSync(desiredPath)) {
-        console.log("before readfile in getFileData");
-
-        //is not a directory it has to be a file or something similar
-        if (sync) {
-            console.log("im doing something in getFileData");
-            return fs.readFileSync(desiredPath, {encoding: "utf-8"});
-
-        } else {
-            fs.readFile(desiredPath, {encoding: "utf-8"}, function (err, data) {
-                console.log("im doing something in getFileData");
-                if (err) {
-                    // res.writeHead(404);
-                    // res.end(JSON.stringify(err));
-                    return;
-                }
-                return data;
-            });
-        }
-
-        console.log("after readfile in getFileData")
-
-    }
-}
-
-//small function for encoding data
-function encodeData(origData) {
-    complete = encodeURIComponent(origData);
-    complete = complete.replace(encodeURIComponent(" "), " ");
-    return complete;
-
-}
-
-//handler function which returns if the credentials are correct
-//and the user ist authenticated
-//old legacy function
-async function userAuthenticated(username, passwd, req, res) {
-    passwdData = dataController("/passwd.json", true, req, res);
-    paswdAsJson = JSON.parse(passwdData);
-    pwFound = false;
-    //checks if the username and password are correct
-    if (paswdAsJson[username]) {
-        passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
-
-        if (passwdHash === paswdAsJson[username]["password"]) {
-            pwFound = true;
-        }
-    }
-
-
-    return pwFound;
-}
-
-//new from submission 4 authenticate
-async function authenticate(username, password) {
-    let user = await credentials.findOne({
-        //username: encodeData(username),
-        username: encodeData(username),
-        password: password
-    });
-    return user !== null;
-}
-
-async function addUser(username, password) {
-    userExists = await credentials.findOne({'username': username});/*.toArray(/!*function(err, docs) {
-        assert.equal(err, null);
-        console.log("Found the following records");
-        console.log(docs);
-        callback(docs);
-    }*!/);*/
-    if (userExists === null) {
-        await credentials.insertOne({username: username, password: password});
-        return true;
-    } else {
-        return false;
-    }
-}
-
-//responsible for finding the session
-async function findSession(sessionid) {
-    test = await sessions.findOne({id: sessionid});
-    return test;
-}
-
-async function newSession() {
-    let sessionid = randomBytes(64).toString('hex');
-    test = await sessions.insertOne({id: sessionid, 'date': Date.now()});
-    return sessionid;
-}
-
-async function invalidateSession(sessionid) {
-    test = await sessions.findOneAndDelete({id: sessionid});
-    return test;
-}
-
-async function addSqueak(username, recipient, squeak) {
-    let options = {weekday: 'short', hour: 'numeric', minute: 'numeric'};
-    let time = new Date().toLocaleDateString('sv-SE', options);
-    await squeaks.insertOne({
-        name: username,
-        time: time,
-        recipient: recipient,
-        squeak: squeak
-    });
-}
-
-async function getSqueaks(recipient) {
-    recipient = encodeData(recipient);
-    testSqueak = await squeaks.find({recipient: recipient}).toArray();
-    return testSqueak;
-}
-
-async function getUsers() {
-    // Data.find({}).project({ _id : 1, serialno : 1 }).toArray()
-    testUser = await credentials.find().project({"username": 1, _id: 0}).toArray();
-    return testUser;
-}
-
-//currently only there to check if username already exists
-function pwHandler({checkUsername = false, req = "", res = ""} = {}) {
-    async function checkUsernameFunction() {
-        // passwdData = dataController("/passwd.json", true, req, res);
-        // paswdAsJson = JSON.parse(passwdData);
-        usernameFound = false;
-        /*if (paswdAsJson[username]) {
-
-            if (Object.entries(paswdAsJson[username]).length !== 0) {
-                return true;
-            } else {
-                return false;
-            }
-        }*/
-        userExists = await credentials.findOne({'username': username});
-        if (userExists !== null) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    if (checkUsername === true) {
-        return checkUsernameFunction();
-    } else {
-        return false;
-    }
-}
-
-//encrypts and saves pw's
-function encryptPW(password, iterations = 100000, salt = "", username = "", save = false) {
-    if (password.length >= 128) {
-        return false;
-    }
-    if (salt == "") {
-        salt = randomBytes(16);
-    }
-    console.log(getHashes());
-    const key = pbkdf2Sync(password.normalize("NFC"), salt, iterations, 64, 'sha256');
-    keyAsHex = key.toString('hex');
-    saltAsHex = salt.toString('hex');
-    console.log(keyAsHex);  // // 745e48...08d59ae'
-    user = username.toString();
-    if (save == true) {
-        dbObject = {[username]: {"iterations": iterations, "salt": saltAsHex, "password": keyAsHex}};
-        passwdData = dataController("/passwd.json", true, "", "");
-        paswdAsJson = JSON.parse(passwdData);
-
-        //if the username doesnt yet exists
-        if (!paswdAsJson[username]) {
-            paswdAsJson[username] = dbObject[username];
-            jsonDbObject = JSON.stringify(paswdAsJson);
-            if (fs.existsSync("passwd.json")) {
-                fs.writeFileSync("passwd.json", jsonDbObject);
-            }
-        }
-    }
-    return keyAsHex;
-}
-
-//encrypts pw
-function hmacValue(value = "", secret = "16516080asdfjklb") {
-    if (value !== "") {
-        let hmac = createHmac('sha256', secret);
-        hmac.update(value);
-        console.log(`hmac:generated`);
-        //console.log(hmac.digest('hex'));
-        val = hmac.digest('hex');
-
-        return val;
-    }
-}
-
-function csrfHandler({
-                         compare = false,
-                         generate = false,
-                         csrf = "",
-                         encodedCookie = "",
-                         secret = "16516080asdfjklb",
-                         save = false,
-                         sessionid = ""
-                     } = {}) {
-    //for the normal synchronize token pattern
-    if (save === true && csrf !== "" && sessionid !== "") {
-        csrfTokens[sessionid] = csrf;
-        console.log(`saved token ${csrf}to cookie ${sessionid}`);
-        return true;
-    }
-
-//if the double submit cookie solution is used we compare the csrf token with the encrypted one from the cookie
-    else if (compare === true && csrf !== "" && encodedCookie !== "" && secret !== "") {
-        ec = encodedCookie;
-        compareValue = hmacValue(csrf, secret);
-        return (ec === compareValue);
-    }
-//the case for the non double submit cookie solution
-    else if (compare === true && csrf !== "" && encodedCookie === "" && secret !== "") {
-        ec = encodedCookie;
-        compareValue = hmacValue(csrf, secret);
-        return (ec === compareValue);
-    } else if (generate === true && secret !== "") {
-        let randomToken = randomBytes(16);
-        let randomTokenHex = randomToken.toString('hex');
-        return randomTokenHex;
-    } else {
-        return false;
-    }
-
-}
-
-
 //logfunction to write important informations in the console
 function logStuff(req, res, next) {
     console.log("method: " + req.method + "" +
@@ -609,130 +432,17 @@ function logStuff(req, res, next) {
     }
 }
 
-async function inputValidation(req, res, next) {
-    //helpfull to detect regular expressions
-    function checkUnallowedSigns(text) {
-        unallowedSigns = ["[", "]", "+", "*", "^", "(", ")"];
-        for (sign in text) {
-            signChar = text[sign];
-            if (unallowedSigns.includes(signChar)) {
-                return true;
-            }
-        }
-        return false;
+
+//replace some variables with provided ones.
+function renderFile({filePath = "", replaceVariables = {}, req, res} = {}) {
+    //read filedata
+    let file = dataController(filePath, true, req, res);
+    for (variable in replaceVariables) {
+        file = file.replace("{{" + variable.toString() + "}}", replaceVariables[variable]);
     }
 
-    console.log(`input validation`);
-    try {
-        if (req.body !== 'undefined') {
-            if (req.body.username !== 'undefined') {
-                username = req.body.username;
-                unallowedCharacters = checkUnallowedSigns(username);
-
-                //allowed username are only whats in the db as usernames
-                //check against regex
-                //^(?=.{8,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$
-                //adapted from https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
-                let nameregex = new RegExp(`^(?=.{4,30}$)(?![_.\{\}])(?!.*[_.]{2})[a-zA-ZäöüÄÖÜß0-9._" "]+(?<![_.\{\}])$`);
-                result = nameregex.test(username);
-                if ([`/signin`].includes(req.path)) {
-                    if (unallowedCharacters) {
-                        // res.json({success: false, reason: "username"});
-                        res.json(false);
-                        return;
-                    }
-                    //if its not a valid name
-                    if (result !== true) {
-                        // validPassword = false;
-                        // res.json({success: false, reason: "username"});
-                        res.json(false);
-                        return;
-                    }
-                    allUsers = await getUsers();
-                    allUserArr = [];
-                    for (user in allUsers) {
-                        allUserArr[user] = allUsers[user]['username'];
-                    }
-
-                    //if the username is not inside the db usernames
-                    if (!(allUserArr.includes(username))) {
-                        res.json(false);
-                        return;
-                    }
-                }
-                if ([`/signup`].includes(req.path)) {
-                    if (unallowedCharacters) {
-                        res.json({success: false, reason: "username"});
-                        return;
-                    }
-                    //if its not a valid name
-                    if (result !== true) {
-                        // validPassword = false;
-                        res.json({success: false, reason: "username"});
-                        return;
-                    }
-                    allUsers = await getUsers();
-                    allUserArr = [];
-                    for (user in allUsers) {
-                        allUserArr[user] = allUsers[user]['username'];
-                    }
-
-                    //if the username is not inside the db usernames
-                    if ((allUserArr.includes(username))) {
-                        res.json({success: false, reason: "username"});
-                        return;
-                    }
-                }
-                try {
-                    req.body.username = username.toString();
-                } catch (e) {
-                    res.json({success: false, reason: "username"});
-                    return;
-                }
-            }
-            if (req.body.password !== 'undefined') {
-                password = req.body.password;
-                unallowedCharacters = checkUnallowedSigns(password);
-                let nameregex = new RegExp(`^(?=.{1,20}$)(?![{}])[a-zA-Z0-9._]+(?<![\{\}])$`);
-                result = nameregex.test(password);
-                if ([`/signin`].includes(req.path)) {
-                    if (unallowedCharacters) {
-                        res.json(false);
-                        return;
-                    }
-                    //if its not a valid name
-                    if (result !== true) {
-                        res.json(false);
-                        return;
-                    }
-                }
-                if ([`/signup`].includes(req.path)) {
-                    if (unallowedCharacters) {
-                        res.json({success: false, reason: "password"});
-                        return;
-                    }
-                    //if its not a valid name
-                    if (result !== true) {
-                        res.json({success: false, reason: "password"});
-                        return;
-                    }
-                }
-                try {
-                    req.body.password = password.toString();
-                } catch (e) {
-                    res.json({success: false, reason: "password"});
-                    return;
-                }
-            }
-        }
-        next();
-    } catch (e) {
-        console.log("Exception: " + e);
-    }
-
-
+    return file;
 }
-
 
 //atHome handler. submission2
 function atHomeHandler(req, res) {
@@ -802,7 +512,7 @@ function atHomeHandler(req, res) {
             return roomData.bedroom.lights.ceiling;
         }
     };
-    if (path1 == "/submission2") {
+    if (pathSplit[0] == "" && path1 == "/") {
         let desiredPath = __dirname + "/templates" + "/atHome.template";
         if (fs.existsSync(desiredPath)) {
             console.log("before readfile in atHome");
@@ -823,10 +533,9 @@ function atHomeHandler(req, res) {
 
         }
     } else if (method == "GET") {
-        path1Replace = path1.replace("submission2", "");
         try {
             res.writeHead(200, {'Content-Type': 'application/json'});
-            stringifiedValue = JSON.stringify(getRoutingTable[path1Replace.toString()]());
+            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
             res.end(stringifiedValue);
         } catch (e) {
             res.writeHead(404);
@@ -857,11 +566,9 @@ function atHomeHandler(req, res) {
         };
         //flip the value
         try {
-            path1Replace = path1.replace("submission2", "");
-
-            postRoutingTable[path1Replace]();
+            postRoutingTable[path1]();
             res.writeHead(200, {'Content-Type': 'application/json'});
-            stringifiedValue = JSON.stringify(getRoutingTable[path1Replace.toString()]());
+            stringifiedValue = JSON.stringify(getRoutingTable[path1.toString()]());
             res.end(stringifiedValue);
         } catch (e) {
             res.writeHead(404);
@@ -936,61 +643,47 @@ function information(req, res) {
     }
 }
 
-//checks for valid cookies and stores them in the session
-async function sessionMiddleware(req, res, next) {
-    cookieName = req.cookieName;
+//checks for valid cookies and storres them in the session
+function sessionMiddleware(req, res, next) {
     // var cookies = cookie.parse(req.headers.cookie || '');
+    let cookies = req.cookies;
+    cookieName = req.cookieName;
+    /* try {
+         await externallyValidateCookie(cookies.testCookie)
+     } catch {
+         throw new Error('Invalid cookies')
+     }*/
     try {
-        if (typeof (req.signedCookies) === undefined || req.signedCookies[cookieName] === false) {
-            res.status(405).send('Someone tampered with the cookie')
-            throw new Error('Someone tampered with the cookie');
-
-        }
-        let cookies = req.signedCookies;
-
         if (Object.entries(cookies).length !== 0) {
             if (cookies[cookieName]) {
-                cookieAsJson = JSON.parse(cookies[cookieName]/*, (key, value) => {
-                    try {
-                        if (typeof value === 'string') {
-                            JSON.parse(value);
-                        } else {
-                            return value;
-                        }
-                    } catch (e) {
-                        console.log(e);
-                    }
-                }*/);
+                cookieAsJson = JSON.parse(cookies[cookieName]);
+            } else {
+                cookieAsJson = {};
             }
-        } else {
-            cookieAsJson = {};
-        }
 
-        // if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
-        if (!await findSession(cookieAsJson["sessionid"])) {
-            res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
-                maxAge: -1  // invalidate
-            }));
+            if (!cookieHandler(cookieName, false, false, true, cookieAsJson["sessionid"])) {
+                res.setHeader('Set-Cookie', cookie.serialize(cookieName, "", {
+                    maxAge: -1  // invalidate
+                }));
 
-            // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-            // res.end();
+                // res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+                // res.end();
 
-            //return false;
-        } else {
-            req.session = cookieAsJson;
+                //return false;
+            } else {
+                req.session = cookieAsJson;
+            }
         }
     } catch (e) {
         //had to disable it because otherwise the old routing doesnt work
         //throw new Error('Invalid cookies');
         console.log(e);
-        return;
         //next();
     }
 
     next();
 
 }
-
 
 //login handler.older submissions
 async function login(req, res) {
@@ -1066,9 +759,9 @@ async function login(req, res) {
             }
             if (await userAuthenticated(dataAsJson.username, dataAsJson.password, req, res)) {
                 res.setHeader('Set-Cookie', cookie.serialize('athome-session', cookieHandler('athome-session', true, false, false), {
-                    maxAge: 60 * 30, httpOnly: true, secure: true  // 30 minutes
+                    maxAge: 60 * 30  // 30 minutes
                 }));
-                res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/submission2"})
+                res.writeHead(302, {"Location": "https://" + req.headers['host']})
                 res.end("authenticated");
             } else {
                 let desiredPath = __dirname + "/templates" + "/login.template";
@@ -1162,65 +855,82 @@ async function logout(req, res) {
 
 }
 
+//squeak handler responsibler for saving and loading squeaks
+function squeakHandler(save = false, squeakObject = {}, load = false) {
+    if (save === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        squeakDatadAsJson = JSON.parse(squeakData);
+        id = randomBytes(16).toString('hex');
+        squeakDatadAsJson[id] = squeakObject;
+        squeakStringified = JSON.stringify(squeakDatadAsJson);
+        //passwdHash = encryptPW(passwd, paswdAsJson[username].iterations, Buffer.from(paswdAsJson[username].salt, "hex"));
+        if (fs.existsSync("squeaks.json")) {
+            fs.writeFileSync("squeaks.json", squeakStringified);
+
+        } else {
+            return false;
+        }
+        return true;
+    } else if (load === true) {
+        squeakData = dataController("/squeaks.json", true, "", "");
+        return JSON.parse(squeakData);
+    }
+}
 
 //options for https
 const options = {
     key: fs.readFileSync('cert/server.key'),
     cert: fs.readFileSync('cert/server.crt')
 };
-/*var server = https.createServer(options, app);*/
-// Register '.mustache' extension with The Mustache Express
-app.engine('mustache', mustacheExpress());
-app.engine('template', mustacheExpress());
-
-app.set('view engine', 'mustache');
-app.set('views', __dirname + '/templates');
+var server = https.createServer(options, app);
 //call cookieParser every time
-app.use(cookieParser("secret"));
+app.use(cookieParser());
 //set the needed cookiename so every function can use it
 app.use((req, res, next) => {
     req.cookieName = "squeak-session";
+    res.setHeader(
+        'Report-To',
+        '{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://localhost:8000/report"}],"include_subdomains":true}'
+    );
+    res.set('Cache-Control', 'no-store');
+    res.setHeader("Content-Security-Policy", "default-src 'self' ; script-src 'self' ;  style-src 'self'; frame-ancestors 'none'; form-action https://localhost:8000/;report-uri https://localhost:8000/report;");
+    //script-src 'self';
     next();
 });
 app.use(sessionMiddleware);
 //log for every request
 app.use(logStuff);
 //different paths for submission 3
-app.post('/signin', express.json(), inputValidation, async (req, res) => {
+app.use(
+    bodyParser.json({
+        type: ['application/json', 'application/csp-report', 'application/reports+json'],
+    })
+);
+// express.raw({type:"application/csp-report"}),
+app.use('/report', (req, res, next) => {
+    console.log(`report: ${JSON. stringify(req.body["csp-report"])}`);
+    /*for (elem in req.body){
+        for (inp in req.body[elem]){
+            console.log(`${inp}: ${req.body[elem][inp]}`);
+        }
+    }*/
+    next();
+});
+app.post('/signin', express.json(), async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
 
         //if user ist authenticated:set cookie, session and send json with true
         //else false
-        // if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
-        if (await authenticate(req.body.username, req.body.password)) {
+        if (await userAuthenticated(req.body.username, req.body.password, req, res)) {
             //set cookie
-            let cookieId = await newSession();
-            //save the cookie
-
-            //cookieHandler(req.cookieName, true, false, false);
+            let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            console.log(`unsigned cookie ${req.session.sessionid}`)
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
 
-            if (req.session["sessionid"]) {
-                //generate csrf token
-                let csrfToken = csrfHandler({generate: true});
-                req.csrf = csrfToken;
-                csrfHandler({csrf: csrfToken, save: true, sessionid: req.session["sessionid"]});
-            } else {
-                res.json(false);
-                return;
-            }
-            res.cookie(req.cookieName, JSON.stringify(req.session), {
-                maxAge: (60 * 30 * 1000),
-                httpOnly: true,
-                secure: true,
-                sameSite: true,
-                signed: true
-            });
-
+            //res.writeHead(302, {"Location": "https://" + req.headers['host']})
             res.json(true);
         } else {
             res.json(false);
@@ -1231,21 +941,10 @@ app.post('/signin', express.json(), inputValidation, async (req, res) => {
         res.status(404).send('Sorry, something went wrong!')
     }
 });
-app.post('/signup', express.json(), inputValidation, async (req, res) => {
+app.post('/signup', express.json(), async (req, res) => {
     req.cookieName = "squeak-session";
     //if there is a nonenmpty body and username, password
     if (typeof (req.body) !== 'undefined' && Object.entries(req.body).length !== 0) {
-        function checkUnallowedSigns(text) {
-            unallowedSigns = ["[", "]", "+", "*", "^", "(", ")"];
-            for (sign in text) {
-                signChar = text[sign];
-                if (unallowedSigns.includes(signChar)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         username = req.body.username;
         password = req.body.password;
         //if user ist authenticated:set cookie, session and send json with true
@@ -1254,13 +953,8 @@ app.post('/signup', express.json(), inputValidation, async (req, res) => {
         let validPassword = password !== undefined && password.length >= 8;
 
         if (validUsername) {
-            username = encodeData(username);
-            if (checkUnallowedSigns(username)) {
-                res.json({success: false, reason: "username"});
-                return;
-            }
             //if names already taken
-            usernameAlreadytaken = await pwHandler({checkUsername: true, req: req, res: res});
+            usernameAlreadytaken = pwHandler({checkUsername: true, req: req, res: res});
             if (usernameAlreadytaken) {
                 validUsername = false;
                 res.json({success: false, reason: "username"});
@@ -1283,38 +977,16 @@ app.post('/signup', express.json(), inputValidation, async (req, res) => {
         //in this case everything is allright and pw and username are ok
         if (validPassword && validUsername) {
             //set cookie
-            let cookieId = await newSession();
-            //cookieHandler(req.cookieName, true, false, false);
+            let cookieId = cookieHandler(req.cookieName, true, false, false);
             //set session
             req.session = {"sessionid": cookieId, "username": req.body.username};
-            if (req.session["sessionid"]) { //session id was set
-                //generate csrf token
-                let csrfToken = csrfHandler({generate: true});
-                req.csrf = csrfToken;
-                csrfHandler({csrf: csrfToken, save: true, sessionid: req.session["sessionid"]});
-            } else { //now session id was set
-                res.json(false);
-                return;
-            }
-            res.cookie(req.cookieName, JSON.stringify(req.session), {
-                maxAge: (60 * 30 * 1000),
-                httpOnly: true,
-                secure: true,
-                sameSite: true,
-                signed: true
-            });
+            res.cookie(req.cookieName, JSON.stringify(req.session), {maxAge: (60 * 30 * 1000)});
             //save pw locally and in "db"
-            //pwHash = encryptPW(password, 100000, "", username, true);
+            pwHash = encryptPW(password, 100000, "", username, true);
             //locally
-            //passwdData = dataController("/passwd.json", true, "", "");
-            //paswdAsJson = JSON.parse(passwdData);
-            //put in the passord and username if dont exist already
-            if (!await addUser(username, password)) {
-                res.json({success: false});
-                return
-            }
-
-            req.session["credentials"] = {"username": username, "password": password};
+            passwdData = dataController("/passwd.json", true, "", "");
+            paswdAsJson = JSON.parse(passwdData);
+            req.session["credentials"] = paswdAsJson;
             res.json({success: true});
         }
     } else {
@@ -1333,82 +1005,54 @@ app.post('/signup', express.json(), inputValidation, async (req, res) => {
     }*/
 });
 app.post('/signout', async (req, res) => {
-    try { //invalidate the cookie
-        let cookies = req.signedCookies;
-        cookieName = "squeak-session";
-        if (cookies[cookieName]) {
-            cookieAsJson = JSON.parse(cookies[cookieName]);
-        }
-
-        //if cookkie as json not empty
-        if (typeof (req.session) !== 'undefined') {
-            //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
-            // if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
-            if (!await findSession(req.session.sessionid)) {
-                //invalidate the client cookie
-                res.clearCookie(cookieName);
-                res.writeHead(404);
-                res.send(false);
-                return;
-            } else {
-
-
-                //cookieHandler(cookieName, false, true, false, req.session.sessionid);
-                //destroy the cookie
-                await invalidateSession(req.session.sessionid);
-                //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
-                /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+    //invalidate the cookie
+    let cookies = req.cookies;
+    cookieName = "squeak-session";
+    cookieAsJson = JSON.parse(cookies[cookieName]);
+    //if cookkie as json not empty
+    if (typeof (req.session) !== 'undefined') {
+        //if its not an allowed cookie invalidate it. but should be done already by the sessionmiddleware
+        if (!await cookieHandler(cookieName, false, false, true, req.session.sessionid)) {
+            //invalidate the client cookie
+            res.clearCookie(cookieName);
+            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
                 maxAge: -1  // invalidate
             }));*/
-                res.clearCookie(cookieName);
-                // res.writeHead(302, {"Location": "/login"})
+            res.writeHead(404);
 
-                res.send(true);
-                return;
-            }
+            //res.send();
+            //res.sendStatus(404);
+            res.send(false);
+            return;
+        } else {
+
+
+            cookieHandler(cookieName, false, true, false, req.session.sessionid);
+            //res.writeHead(302, {"Location": "https://" + req.headers['host'] + "/login"})
+            /*res.setHeader('Set-Cookie', cookie.serialize('athome-session', "", {
+                maxAge: -1  // invalidate
+            }));*/
+            res.clearCookie(cookieName);
+            // res.writeHead(302, {"Location": "/login"})
+
+            res.send(true);
+            return;
         }
-        res.send(true);
-    } catch (e) {
-        throw new Error('Invalid cookies');
     }
+    res.send(true);
 
 });
 app.post('/squeak', express.urlencoded(), (req, res) => {
     if (typeof (req.session) !== 'undefined') {
         if (req.body.squeak) {
             squeak = req.body.squeak;
-            let token = "";
-            if (req.body.CSRFToken !== undefined) {
-                token = req.body.CSRFToken;
-            }
-            //old way with double submit cookie
-            /*if (req.cookies["csrfToken"] && !csrfHandler({
-                compare: true,
-                csrf: token,
-                encodedCookie: req.cookies["csrfToken"]
-            })) {
-                res.status(404).send('Invalid CSRF!');
-                return;
-            }*/
-            //way with synchronize token pattern
-            if (!(req.session.sessionid && csrfTokens[req.session.sessionid] && (csrfTokens[req.session.sessionid] === token))) {
-                if (req.session.sessionid) {
-                    invalidateSession(req.session.sessionid);
-                }
-                res.clearCookie(cookieName);
-                res.status(404).send('Invalid CSRF!');
-                return;
-            }
             // console.log(Date.now().toLocaleString().toString());
             const date = new Date();
             const dateString = date.toDateString();
             const time = date.toLocaleTimeString();
             // console.log(dateString+" "+time);
-            //old way
-            /* squeakObject = {username: req.session["username"], cardText: squeak, time: (dateString + " " + time)}
-             squeakHandler(true, squeakObject);*/
-            //db way
-            addSqueak(req.session["username"], req.body.recipient, req.body.squeak);
+            squeakObject = {username: req.session["username"], cardText: squeak, time: (dateString + " " + time)}
+            squeakHandler(true, squeakObject);
         }
 
         // res.send(file);
@@ -1432,40 +1076,47 @@ app.use('/', async (req, res, next) => {
         console.log("no further handling, old route took other")
     }
 })
-
-
 //routerfunction to handler with "/" requests
 router.use(sessionMiddleware, async (req, res, next) => {
     //if session valid serve the squeaks
     if (typeof (req.session) !== 'undefined') {
-
-        /* if (csrfTokens[req.session.sessionid]) {
-             options["csrf_token"] = csrfTokens[req.session.sessionid];
-         }*/
-        // res.render('squeakHomepage', options)
-        Promise.all([getUsers(), getSqueaks('all'), getSqueaks(req.session.username),]).then(
-            results => {
-                res.render('squeakHomepage', {
-                    username: req.session.username,
-                    users: results[0],
-                    squeaks: results[1].reverse(),
-                    squeals: results[2].reverse(),
-                    csrf_token: csrfTokens[req.session.sessionid]
-                });
-            });
-        //old way
-        /*file = renderFile({
+        tileTemplate = `<div class="card mb-2">
+            <div class="card-header">
+                {{username}}
+                <span class="float-right">{{time}}</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{cardText}}</p>
+            </div>
+        </div>`;
+        //load the squeaks from file
+        squeaks = squeakHandler(false, {}, true);
+        //reverse the order to display correctly on page
+        squeaksReverseKeys = Object.keys(squeaks).reverse();
+        endSqueaks = "";
+        for (squeak in squeaksReverseKeys) {
+            squeak = squeaksReverseKeys[squeak];
+            tileTemplateCopy = tileTemplate;
+            for (entry in squeaks[squeak]) {
+                tileTemplateCopy = tileTemplateCopy.replace("{{" + entry.toString() + "}}", squeaks[squeak][entry]);
+            }
+            endSqueaks += tileTemplateCopy;
+        }
+        file = renderFile({
             filePath: "/templates/squeakHomepage.template",
             replaceVariables: {username: req.session["username"], squeaks: endSqueaks},
             req: req,
             res: res
-        });*/
+        });
         // res.send(await getFileData(__dirname + "/templates" + "/squeakHomepage.template", true));
-        //res.send(file);
+        res.send(file);
     } else {//if not valid serve
         res.send(await getFileData(__dirname + "/templates" + "/squeakSignup.template", true));
 
     }
+    //res.writeHead(200, {'Content-Type': 'text/html'});
+    //
+    //next();
 });
 
 app.use('/', router);
@@ -1477,25 +1128,7 @@ app.use((err, req, res, next) => {
 })
 
 
-const deleteIntervall = 1000 * 60 * 30; //in ms =30 minutes
-//make server connection
-MongoClient.connect(mongoURL)
-    .then(async (cluster) => {
-            mongoCluster = cluster;
-
-            let db = cluster.db('Squeak!');
-            squeaks = db.collection('squeaks');
-            credentials = db.collection('credentials');
-            sessions = db.collection('sessions');
-            let server = https.createServer(options, app);
-            server.listen(8000);
-            setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
-            // cluster.close();
-        }
-    ).catch((error) => {
-        console.log(error);
-
-    }
-);
-//server.listen(8000);
+const deleteIntervall = 1000 * 60 * 30; //in ms
+setInterval(deleteOldCookies, deleteIntervall, deleteIntervall);//cookies should be deleted on the server after 30 minutes
+server.listen(8000);
 

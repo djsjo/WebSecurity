@@ -104,6 +104,59 @@ I can't tamper with the cookie anymore.
 
 _______________________________________________________________________________________________________________________
 
+Submission 5:
+CSP:
+What is it?:
+
+Whats important to protect against xss
+
+-default-src macht sinn als backup
+-script-src to prevent inline script
+-style-src
+
+For "My first web application" is called the url "http://localhost:8000/information?q=<script>alert('test');</script>" and the browse showed me the alert as expected.
+Because its a very Basic Website doing nothing besided getting css and js from origin and showing the parameter etc i added the following CSP:
+
+res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
+
+and it worked without problems. The script wasn't injected anymore.
+
+My first social media web application
+
+To first test the stored xss i squeaked the script "<script>alert('Owned');</script>" and it worked.
+
+-enforce https, forms nur zu /squeak, nur json senden erlaubt,cookies nur secure
+res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
+
+Mozilla doesnt allow some csp attribute and in order to get the protection through the csp i switched to using chrome.
+At first the signin and signup button scripts/buttons were blocked so i generated hashed for the and allowed unsafe-hashes
+
+
+Morgen weiter mit normal website machen funktionen outsourcen
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+___________________________________________________________________
 Stored XSS Atack:
 The first attack with "<script>alert('Owned');</script>" was pretty straightforward. I was able to place the script as a "Squeak" and every user who logged in ran the script.	
 
@@ -195,6 +248,11 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
+-aoö regex: https://stackoverflow.com/questions/36366125/include-special-characters-like-%C3%B6-%C3%A4-%C3%BC-in-regular-expressions
+-hacking nodejs and mongodb: https://blog.websecurify.com/2014/08/hacking-nodejs-and-mongodb.html
+-what is json https://www.tutorialrepublic.com/javascript-tutorial/javascript-json-parsing.php
+-url decoder: https://meyerweb.com/eric/tools/dencoder/
+-regular expression for username: https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username
 .object.values: https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Object/values
 -json cookie reverse: https://wikimass.com/json/sort-reverse
 -append file: https://stackoverflow.com/questions/3459476/how-to-append-to-a-file-in-node
