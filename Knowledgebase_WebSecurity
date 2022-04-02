@@ -115,24 +115,72 @@ Whats important to protect against xss
 -style-src
 
 For "My first web application" is called the url "http://localhost:8000/information?q=<script>alert('test');</script>" and the browse showed me the alert as expected.
-Because its a very Basic Website doing nothing besided getting css and js from origin and showing the parameter etc i added the following CSP:
+Because its a very Basic Website doing nothing besided getting css and js from origin and showing the parameter etc I added the following CSP:
 
 res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
 
 and it worked without problems. The script wasn't injected anymore.
 
+
 My first social media web application
 
-To first test the stored xss i squeaked the script "<script>alert('Owned');</script>" and it worked.
+Mozilla doesnt allow some csp attributes and in order to get the protection through the csp i had to rewrite the template files.
+At first the signin and signup button scripts/buttons were blocked so i outsourced every inline function so this eventhandler worked but inserted xss wouldnt.
+In order to protect my form I also only allowed to send them to the "./squeak" address.
 
--enforce https, forms nur zu /squeak, nur json senden erlaubt,cookies nur secure
-res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
+I used the following CSP for the social media web application:
+res.setHeader(
+        'Report-To',
+        '{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://localhost:8000/report"}],"include_subdomains":true}'
+    );
 
-Mozilla doesnt allow some csp attribute and in order to get the protection through the csp i switched to using chrome.
-At first the signin and signup button scripts/buttons were blocked so i generated hashed for the and allowed unsafe-hashes
+res.setHeader("Content-Security-Policy", "default-src 'self' ; script-src 'self' ;  style-src 'self'; frame-ancestors 'none'; form-action https://localhost:8000/;report-uri https://localhost:8000/report;");
+
+After that I was able to use my application as intenden and XSS Attack were prevented.
+
+SOP, CORS etc...
+-json webtokens 
+	-how to keep json webtokens
+-what is cors
+
+My first Idea was to user the JWT inside a cookie but this might complicate thing with CORS so im trying to use the Authorization header.
 
 
-Morgen weiter mit normal website machen funktionen outsourcen
+Beispiel vom senden des normalen
+referer policy
+
+In order to really understand what happened back in Submission 3 when we used Stored XSS to send it to your provided endpoint i checked the Headers and Payload of the request to the heroku app:
+Response Header:
+HTTP/1.1 200 OK
+Server: Cowboy
+Connection: keep-alive
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Date: Sat, 02 Apr 2022 13:00:42 GMT
+Content-Length: 0
+Via: 1.1 vegur
+
+Request Header:
+POST /store/156 HTTP/1.1
+Host: dva446.herokuapp.com
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:98.0) Gecko/20100101 Firefox/98.0
+Accept: */*
+Accept-Language: en-US,en;q=0.7,de;q=0.3
+Accept-Encoding: gzip, deflate, br
+Content-Type: text/plain;charset=UTF-8
+Content-Length: 116
+Origin: https://localhost:8000
+Connection: keep-alive
+Referer: https://localhost:8000/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: cross-site
+
+Payload:daniel:squeak-session=%7B%22sessionid%22%3A%22cc831bd909099a833ef4f399c4d3fcc2%22%2C%22username%22%3A%22daniel%22%7D
+
+After researching a little bit, I found out, that express has an jwt token library which im going to use because the signing process is pretty similar to the one with cookies.
+Im going to implement as requested but will let the user how he will make his requests and how to keep and implement the bearer token. 
+
 
 
 
@@ -248,8 +296,6 @@ mögliche problems:
 -url.parse nehmen um sicherheitslücke zu haben (siehe exercise 4)
 ________________________________________________________________________________________________________________________________________________
 links:
--aoö regex: https://stackoverflow.com/questions/36366125/include-special-characters-like-%C3%B6-%C3%A4-%C3%BC-in-regular-expressions
--hacking nodejs and mongodb: https://blog.websecurify.com/2014/08/hacking-nodejs-and-mongodb.html
 -what is json https://www.tutorialrepublic.com/javascript-tutorial/javascript-json-parsing.php
 -url decoder: https://meyerweb.com/eric/tools/dencoder/
 -regular expression for username: https://stackoverflow.com/questions/12018245/regular-expression-to-validate-username

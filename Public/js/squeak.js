@@ -42,7 +42,6 @@ function signup(button) {
 function signin(button) {
 
     button.blur();
-    console.dir(`button: ${button}`);
 
     let username = $('#username').val();
     let password = $('#password').val();
@@ -68,7 +67,6 @@ function signin(button) {
 }
 
 function signout(button) {
-
     button.blur();
     console.log("signout");
 
@@ -81,3 +79,4 @@ function signout(button) {
     );
 
 }
+
