@@ -208,7 +208,35 @@ console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
 Every time a new user logged in his/her cookie data were sent to my endpoint and I could later get them with a get request (including bearer token) to "https://localhost:8001/store/daniela".
 Everything worked as planned.
 
-I used some parts of my old code to generate the Server for the rest.
+This is for example the result from one of these get requests:
+
+lör 23:37
+H. Curry:squeak-session=%7B%22sessionid%22%3A%22b23ca0c63ebaf786fb77f3c5f8b0957c%22%2C%22username%22%3A%22H.%20Curry%22%7D
+
+lör 23:23
+A. Church:squeak-session=%7B%22sessionid%22%3A%2294dbed8c734943e4313f264650163b3f%22%2C%22username%22%3A%22A.%20Church%22%7D
+
+lör 23:22
+daniel:squeak-session=%7B%22sessionid%22%3A%222b67b040fc63b00b5163f0e29dac56fa%22%2C%22username%22%3A%22daniel%22%7D
+
+lör 23:02
+{"test1":"test1"}
+
+lör 22:09
+{"test1":"test1"}
+
+lör 22:09
+{"test1":"test1"}
+
+lör 22:04
+{"test":"test"}
+
+
+
+I used some parts of my old code to generate the Server for the rest services.
+
+
+
 
 
 

@@ -1,0 +1,26 @@
+CSP:
+
+
+For "My first web application" I called the url "http://localhost:8000/information?q=<script>alert('test');</script>" and the browser showed me the alert as expected.
+Because its a very Basic Website which is doing nothing besided getting css and js from origin and showing the parameter etc I added the following CSP:
+
+res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self';  style-src 'self'; frame-ancestors 'none'; form-action 'none';");  
+
+and it worked without problems. The script wasn't injected anymore.
+
+
+My first social media web application
+
+Mozilla doesnt allow some csp attributes and in order to get the protection through the csp i had to rewrite the template files.
+At first the signin and signup button scripts/buttons were blocked so i outsourced every inline function so this eventhandler worked but inserted xss wouldnt.
+In order to protect my form I also only allowed to send them to the "./squeak" address.
+
+I used the following CSP for the social media web application:
+res.setHeader(
+        'Report-To',
+        '{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://localhost:8000/report"}],"include_subdomains":true}'
+    );
+
+res.setHeader("Content-Security-Policy", "default-src 'self' ; script-src 'self' ;  style-src 'self'; frame-ancestors 'none'; form-action https://localhost:8000/;report-uri https://localhost:8000/report;");
+
+After that I was able to use my application as intenden and XSS Attack were prevented.

